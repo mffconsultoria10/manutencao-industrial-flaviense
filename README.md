@@ -1,4 +1,4 @@
-# Controle de Manutenção Industrial
+# Manutenção Industrial Flaviense
 
 Sistema de cadastro de equipamentos, plano de manutenções preventivas,
 monitoramento (inspeções) e registro de falhas/intervenções corretivas.
