@@ -1,5 +1,5 @@
 // Cole aqui a URL do Apps Script publicado como "Aplicativo da Web".
-const API_URL = 'https://script.google.com/macros/s/AKfycbw_jes_RNK88pxH2vr97pZpM9Rn5Pe9IK2GS2Xf0j9tgpm-hEBq3UWZHYzhNvzkxuM/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbygStaQCXvcPnxSkS_-4dXBQDQQHqomJnC5HEqaoZTMkN4JxpyGvm3JAdVeITueowU/exec';
 
 function getSessao() {
   const raw = localStorage.getItem('mnt_sessao');
