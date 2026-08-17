@@ -29,7 +29,7 @@ const HEADERS = {
   Equipamentos: ['ID', 'Nome', 'Descricao', 'Local', 'DataProximaIntervencao', 'CriadoEm', 'AtualizadoEm'],
   Preventivas: ['ID', 'EquipamentoID', 'Descricao', 'Periodicidade', 'CriadoEm'],
   Monitoramento: ['ID', 'EquipamentoID', 'Data', 'Responsavel', 'Horimetro', 'Observacoes', 'CriadoEm'],
-  Falhas: ['ID', 'EquipamentoID', 'Data', 'Descricao', 'RegistradoPor', 'CriadoEm'],
+  Falhas: ['ID', 'EquipamentoID', 'Data', 'Descricao', 'RegistradoPor', 'CriadoEm', 'ParadaProducao', 'EquipeResponsavel', 'EmpresaTerceirizada', 'Custo'],
   Usuarios: ['Nome', 'Usuario', 'SenhaHash', 'Ativo', 'CriadoEm'],
   AlertaEmails: ['Email', 'Ativo', 'CriadoEm'],
   Sessoes: ['Token', 'Usuario', 'Nome', 'ExpiraEm']
@@ -52,6 +52,8 @@ function ensureSheets_() {
       sheet.appendRow(HEADERS[name]);
       sheet.setFrozenRows(1);
       criadaAgora = true;
+    } else {
+      migrarCabecalho_(sheet, HEADERS[name]);
     }
     if (criadaAgora && name === SHEETS.USUARIOS && sheet.getLastRow() === 1) {
       sheet.appendRow(['Administrador', 'admin', sha256Hex_('admin123'), true, new Date()]);
@@ -64,6 +66,20 @@ function ensureSheets_() {
       ss.deleteSheet(def);
     }
   });
+}
+
+/**
+ * Adiciona ao final da linha de cabeçalho quaisquer colunas novas
+ * previstas em HEADERS que ainda não existam na planilha real, sem
+ * mexer nas colunas já existentes (preserva dados já cadastrados).
+ */
+function migrarCabecalho_(sheet, headersEsperados) {
+  const ultimaColuna = sheet.getLastColumn();
+  const cabecalhoAtual = ultimaColuna > 0 ? sheet.getRange(1, 1, 1, ultimaColuna).getValues()[0] : [];
+  const faltando = headersEsperados.filter(function (h) { return cabecalhoAtual.indexOf(h) === -1; });
+  if (faltando.length) {
+    sheet.getRange(1, cabecalhoAtual.length + 1, 1, faltando.length).setValues([faltando]);
+  }
 }
 
 function getSheet_(name) {
@@ -224,7 +240,18 @@ function adicionarMonitoramento_(p) {
 
 function adicionarFalha_(p) {
   const id = new Date().getTime();
-  appendRow_(SHEETS.FALHAS, { ID: id, EquipamentoID: p.equipamentoId, Data: p.data, Descricao: p.descricao, RegistradoPor: p.registradoPor, CriadoEm: new Date() });
+  appendRow_(SHEETS.FALHAS, {
+    ID: id,
+    EquipamentoID: p.equipamentoId,
+    Data: p.data,
+    Descricao: p.descricao,
+    RegistradoPor: p.registradoPor,
+    CriadoEm: new Date(),
+    ParadaProducao: p.paradaProducao === 'true',
+    EquipeResponsavel: p.equipeResponsavel || '',
+    EmpresaTerceirizada: p.empresaTerceirizada || '',
+    Custo: p.custo || ''
+  });
   return { id: id };
 }
 

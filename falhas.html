@@ -53,6 +53,39 @@
           <label for="falha-descricao">Descrição da falha</label>
           <textarea id="falha-descricao" rows="4" required></textarea>
         </div>
+
+        <div class="campo">
+          <label style="display:flex; align-items:center; gap:0.5rem; font-weight:600; color:var(--texto);">
+            <input type="checkbox" id="falha-parada" style="width:auto;">
+            A falha gerou parada na produção?
+          </label>
+        </div>
+
+        <div class="campo">
+          <label>Manutenção realizada por</label>
+          <div style="display:flex; gap:1.5rem; margin-top:0.3rem;">
+            <label style="display:flex; align-items:center; gap:0.4rem; font-weight:400;">
+              <input type="radio" name="equipe" id="falha-equipe-propria" value="Propria" style="width:auto;" checked>
+              Equipe própria
+            </label>
+            <label style="display:flex; align-items:center; gap:0.4rem; font-weight:400;">
+              <input type="radio" name="equipe" id="falha-equipe-terceirizada" value="Terceirizada" style="width:auto;">
+              Equipe terceirizada
+            </label>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="campo" id="campo-empresa-terceirizada" style="display:none;">
+            <label for="falha-empresa">Nome da empresa terceirizada</label>
+            <input type="text" id="falha-empresa">
+          </div>
+          <div class="campo">
+            <label for="falha-custo">Custo da intervenção (R$), se houver</label>
+            <input type="number" id="falha-custo" min="0" step="0.01" placeholder="0,00">
+          </div>
+        </div>
+
         <button type="submit" class="botao botao-primario">Registrar falha</button>
         <span id="msg-ok" class="sucesso" style="display:none;">Falha registrada com sucesso.</span>
       </form>

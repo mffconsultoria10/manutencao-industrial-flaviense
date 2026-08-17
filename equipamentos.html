@@ -18,16 +18,29 @@
   </nav>
 </div>
 
-<div class="container">
+<div class="container tela-edicao">
   <div class="cartao">
     <div class="linha-topo">
       <h2 style="border:none; margin:0; padding:0;">Equipamentos cadastrados</h2>
-      <a href="cadastro.html" class="botao botao-ambar">+ Novo equipamento</a>
+      <div style="display:flex; gap:0.6rem;">
+        <div class="dropdown no-print" id="dropdown-exportar">
+          <button type="button" class="botao botao-secundario" id="btn-exportar">⬇ Exportar</button>
+          <div class="dropdown-menu" id="menu-exportar">
+            <button type="button" id="btn-exportar-xlsx">📊 Exportar Excel (.xlsx)</button>
+            <button type="button" id="btn-exportar-pdf">🖶 Exportar PDF</button>
+          </div>
+        </div>
+        <a href="cadastro.html" class="botao botao-ambar">+ Novo equipamento</a>
+      </div>
     </div>
-    <form id="form-busca" class="form-inline" style="max-width:520px;">
+    <form id="form-busca" class="form-inline" style="max-width:760px;">
       <div class="campo">
         <label for="busca">Buscar por nome ou ID</label>
         <input type="text" id="busca" placeholder="Ex: Compressor ou EQ-0001">
+      </div>
+      <div class="campo" style="max-width:240px;">
+        <label for="filtro-local">Filtrar por local</label>
+        <select id="filtro-local"><option value="">Todos os locais</option></select>
       </div>
       <button type="submit" class="botao botao-primario">🔍 Buscar</button>
     </form>
@@ -43,6 +56,9 @@
   </div>
 </div>
 
+<div class="container ficha-impressao" id="lista-impressao"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="js/api.js"></script>
 <script src="js/equipamentos.js"></script>
 </body>

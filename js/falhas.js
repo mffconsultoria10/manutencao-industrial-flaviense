@@ -47,6 +47,15 @@
     document.getElementById('falha-data').value = new Date().toISOString().slice(0, 10);
   }
 
+  const radiosEquipe = document.getElementsByName('equipe');
+  const campoEmpresa = document.getElementById('campo-empresa-terceirizada');
+  function atualizarCampoEmpresa() {
+    const terceirizada = document.getElementById('falha-equipe-terceirizada').checked;
+    campoEmpresa.style.display = terceirizada ? 'block' : 'none';
+    if (!terceirizada) document.getElementById('falha-empresa').value = '';
+  }
+  radiosEquipe.forEach(function (r) { r.addEventListener('change', atualizarCampoEmpresa); });
+
   document.getElementById('btn-trocar').addEventListener('click', function () {
     selecionado = null;
     etapaForm.style.display = 'none';
@@ -66,15 +75,25 @@
   document.getElementById('form-falha').addEventListener('submit', async function (ev) {
     ev.preventDefault();
     if (!selecionado) return;
+    const equipeTerceirizada = document.getElementById('falha-equipe-terceirizada').checked;
     const resp = await apiPost('adicionarFalha', {
       equipamentoId: selecionado.ID,
       data: document.getElementById('falha-data').value,
       descricao: document.getElementById('falha-descricao').value.trim(),
-      registradoPor: document.getElementById('falha-registrado-por').value.trim()
+      registradoPor: document.getElementById('falha-registrado-por').value.trim(),
+      paradaProducao: document.getElementById('falha-parada').checked ? 'true' : 'false',
+      equipeResponsavel: equipeTerceirizada ? 'Terceirizada' : 'Propria',
+      empresaTerceirizada: equipeTerceirizada ? document.getElementById('falha-empresa').value.trim() : '',
+      custo: document.getElementById('falha-custo').value
     });
     if (resp.ok) {
       document.getElementById('msg-ok').style.display = 'inline';
       document.getElementById('falha-descricao').value = '';
+      document.getElementById('falha-parada').checked = false;
+      document.getElementById('falha-equipe-propria').checked = true;
+      document.getElementById('falha-empresa').value = '';
+      document.getElementById('falha-custo').value = '';
+      atualizarCampoEmpresa();
       setTimeout(function () { document.getElementById('msg-ok').style.display = 'none'; }, 2500);
     } else {
       alert('Erro ao registrar falha: ' + resp.error);

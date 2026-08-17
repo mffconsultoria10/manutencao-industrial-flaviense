@@ -90,6 +90,17 @@
     });
   }
 
+  function formatarMoeda(valor) {
+    const n = parseFloat(valor);
+    if (!valor || isNaN(n)) return '—';
+    return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+
+  function formatarEquipe(f) {
+    if (!f.EquipeResponsavel) return '—';
+    return f.EquipeResponsavel === 'Terceirizada' ? 'Terceirizada' : 'Própria';
+  }
+
   function renderFalhas(lista) {
     const corpo = document.getElementById('corpo-falhas');
     const vazio = document.getElementById('vazio-falhas');
@@ -98,7 +109,12 @@
     vazio.style.display = 'none';
     lista.slice().sort(function (a, b) { return new Date(b.Data) - new Date(a.Data); }).forEach(function (f) {
       const tr = document.createElement('tr');
-      tr.innerHTML = '<td>' + formatarData(f.Data) + '</td><td>' + escapeHtml(f.Descricao) + '</td><td>' + escapeHtml(f.RegistradoPor) + '</td>';
+      tr.innerHTML = '<td>' + formatarData(f.Data) + '</td><td>' + escapeHtml(f.Descricao) + '</td>' +
+        '<td>' + (f.ParadaProducao === true ? '<span class="badge badge-atrasado">Sim</span>' : 'Não') + '</td>' +
+        '<td>' + formatarEquipe(f) + '</td>' +
+        '<td>' + escapeHtml(f.EmpresaTerceirizada || '—') + '</td>' +
+        '<td>' + formatarMoeda(f.Custo) + '</td>' +
+        '<td>' + escapeHtml(f.RegistradoPor) + '</td>';
       corpo.appendChild(tr);
     });
   }
@@ -117,7 +133,12 @@
       return '<tr><td>' + formatarData(m.Data) + '</td><td>' + escapeHtml(m.Responsavel) + '</td><td>' + escapeHtml(m.Horimetro) + '</td><td>' + escapeHtml(m.Observacoes) + '</td></tr>';
     }).join('');
     const falhaRows = dadosAtuais.falhas.slice().sort(function (a, b) { return new Date(b.Data) - new Date(a.Data); }).map(function (f) {
-      return '<tr><td>' + formatarData(f.Data) + '</td><td>' + escapeHtml(f.Descricao) + '</td><td>' + escapeHtml(f.RegistradoPor) + '</td></tr>';
+      return '<tr><td>' + formatarData(f.Data) + '</td><td>' + escapeHtml(f.Descricao) + '</td>' +
+        '<td>' + (f.ParadaProducao === true ? 'Sim' : 'Não') + '</td>' +
+        '<td>' + formatarEquipe(f) + '</td>' +
+        '<td>' + escapeHtml(f.EmpresaTerceirizada || '—') + '</td>' +
+        '<td>' + formatarMoeda(f.Custo) + '</td>' +
+        '<td>' + escapeHtml(f.RegistradoPor) + '</td></tr>';
     }).join('');
 
     document.getElementById('ficha-impressao').innerHTML =
@@ -137,7 +158,7 @@
       '<table style="margin-bottom:1.2rem;"><thead><tr><th>Data</th><th>Responsável</th><th>Horímetro</th><th>Observações</th></tr></thead><tbody>' +
         linhasOuVazio(monRows, dadosAtuais.monitoramento.length) + '</tbody></table>' +
       '<h2>Histórico de falhas / intervenções corretivas</h2>' +
-      '<table><thead><tr><th>Data</th><th>Descrição</th><th>Registrado por</th></tr></thead><tbody>' +
+      '<table><thead><tr><th>Data</th><th>Descrição</th><th>Parada?</th><th>Equipe</th><th>Empresa terceirizada</th><th>Custo</th><th>Registrado por</th></tr></thead><tbody>' +
         linhasOuVazio(falhaRows, dadosAtuais.falhas.length) + '</tbody></table>';
   }
 

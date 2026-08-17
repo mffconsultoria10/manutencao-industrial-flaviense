@@ -224,6 +224,34 @@ tbody tr:hover { background: #f8fafc; }
   margin-top: 0.9rem;
 }
 
+.dropdown { position: relative; display: inline-block; }
+.dropdown-menu {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  background: var(--branco);
+  border: 1px solid var(--cinza-borda);
+  border-radius: var(--raio);
+  box-shadow: var(--sombra);
+  min-width: 230px;
+  z-index: 50;
+  overflow: hidden;
+}
+.dropdown-menu.aberto { display: block; }
+.dropdown-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0.65rem 0.9rem;
+  font-weight: 500;
+  color: var(--texto);
+}
+.dropdown-menu button:hover { background: var(--cinza-bg); }
+
 .indicador-carregando {
   position: fixed;
   top: 14px;
