@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Equipamentos - Manutenção Industrial</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="topbar no-print">
+  <div class="marca"><span class="pastilha">MANUTENÇÃO</span> Controle de Equipamentos</div>
+  <nav>
+    <a href="equipamentos.html">Equipamentos</a>
+    <a href="falhas.html">Registrar Falha</a>
+    <a href="config.html">Configurações</a>
+    <span class="usuario" id="nome-usuario"></span>
+    <button class="sair" onclick="sair()">Sair</button>
+  </nav>
+</div>
+
+<div class="container">
+  <div class="cartao">
+    <div class="linha-topo">
+      <h2 style="border:none; margin:0; padding:0;">Equipamentos cadastrados</h2>
+      <a href="cadastro.html" class="botao botao-ambar">+ Novo equipamento</a>
+    </div>
+    <div class="campo" style="max-width:360px;">
+      <label for="busca">Buscar por nome ou ID</label>
+      <input type="text" id="busca" placeholder="Ex: Compressor ou EQ-0001">
+    </div>
+    <div class="tabela-scroll">
+      <table>
+        <thead>
+          <tr><th>ID</th><th>Nome</th><th>Local</th><th>Próxima intervenção</th><th></th></tr>
+        </thead>
+        <tbody id="corpo-tabela"></tbody>
+      </table>
+    </div>
+    <div id="vazio" class="vazio" style="display:none;">Nenhum equipamento cadastrado ainda.</div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/equipamentos.js"></script>
+</body>
+</html>

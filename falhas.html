@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registrar Falha - Manutenção Industrial</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="topbar no-print">
+  <div class="marca"><span class="pastilha">MANUTENÇÃO</span> Controle de Equipamentos</div>
+  <nav>
+    <a href="equipamentos.html">Equipamentos</a>
+    <a href="falhas.html">Registrar Falha</a>
+    <a href="config.html">Configurações</a>
+    <span class="usuario" id="nome-usuario"></span>
+    <button class="sair" onclick="sair()">Sair</button>
+  </nav>
+</div>
+
+<div class="container">
+  <div class="cartao">
+    <h2>Registrar falha / intervenção corretiva</h2>
+
+    <div id="etapa-busca">
+      <div class="campo">
+        <label for="busca-equipamento">Buscar equipamento por nome ou ID</label>
+        <input type="text" id="busca-equipamento" placeholder="Ex: Compressor ou EQ-0001" autocomplete="off">
+      </div>
+      <div id="lista-resultados" class="tabela-scroll"></div>
+    </div>
+
+    <div id="etapa-formulario" style="display:none;">
+      <div class="cartao" style="background:#f8fafc;">
+        <strong id="equipamento-selecionado"></strong>
+        <button type="button" class="botao botao-secundario botao-pequeno" id="btn-trocar" style="margin-left:0.8rem;">Trocar equipamento</button>
+      </div>
+      <form id="form-falha">
+        <div class="grid-2">
+          <div class="campo">
+            <label for="falha-data">Data da falha</label>
+            <input type="date" id="falha-data" required>
+          </div>
+          <div class="campo">
+            <label for="falha-registrado-por">Registrado por</label>
+            <input type="text" id="falha-registrado-por" required>
+          </div>
+        </div>
+        <div class="campo">
+          <label for="falha-descricao">Descrição da falha</label>
+          <textarea id="falha-descricao" rows="4" required></textarea>
+        </div>
+        <button type="submit" class="botao botao-primario">Registrar falha</button>
+        <span id="msg-ok" class="sucesso" style="display:none;">Falha registrada com sucesso.</span>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/falhas.js"></script>
+</body>
+</html>

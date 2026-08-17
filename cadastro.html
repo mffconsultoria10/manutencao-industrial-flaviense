@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cadastro de Equipamento - Manutenção Industrial</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="topbar no-print">
+  <div class="marca"><span class="pastilha">MANUTENÇÃO</span> Controle de Equipamentos</div>
+  <nav>
+    <a href="equipamentos.html">Equipamentos</a>
+    <a href="falhas.html">Registrar Falha</a>
+    <a href="config.html">Configurações</a>
+    <span class="usuario" id="nome-usuario"></span>
+    <button class="sair" onclick="sair()">Sair</button>
+  </nav>
+</div>
+
+<div class="container tela-edicao">
+  <div class="cartao">
+    <div class="linha-topo">
+      <h2 style="border:none; margin:0; padding:0;" id="titulo-pagina">Novo equipamento</h2>
+      <div style="display:flex; gap:0.5rem;">
+        <button type="button" class="botao botao-secundario" id="btn-imprimir" style="display:none;">🖶 Gerar PDF / Imprimir ficha</button>
+      </div>
+    </div>
+
+    <form id="form-equipamento">
+      <div class="grid-2">
+        <div class="campo">
+          <label>ID</label>
+          <input type="text" id="id-equipamento" disabled placeholder="Gerado automaticamente ao salvar">
+        </div>
+        <div class="campo">
+          <label for="nome">Nome do equipamento *</label>
+          <input type="text" id="nome" required>
+        </div>
+      </div>
+      <div class="campo">
+        <label for="descricao">Descrição</label>
+        <textarea id="descricao" rows="2"></textarea>
+      </div>
+      <div class="grid-2">
+        <div class="campo">
+          <label for="local">Local do equipamento</label>
+          <input type="text" id="local">
+        </div>
+        <div class="campo">
+          <label for="data-proxima">Data programada da próxima intervenção</label>
+          <input type="date" id="data-proxima">
+        </div>
+      </div>
+      <button type="submit" class="botao botao-primario">Salvar equipamento</button>
+      <span id="msg-salvo" class="sucesso" style="display:none;">Salvo com sucesso.</span>
+    </form>
+  </div>
+
+  <div class="cartao" id="bloco-preventivas" style="display:none;">
+    <h2>Plano de manutenções preventivas</h2>
+    <div class="tabela-scroll">
+      <table>
+        <thead><tr><th>O que</th><th>Periodicidade</th><th></th></tr></thead>
+        <tbody id="corpo-preventivas"></tbody>
+      </table>
+    </div>
+    <div id="vazio-preventivas" class="vazio" style="display:none;">Nenhuma preventiva cadastrada.</div>
+    <form id="form-preventiva" class="form-inline" style="margin-top:0.9rem;">
+      <div class="campo"><label>O que</label><input type="text" id="prev-descricao" required></div>
+      <div class="campo"><label>Periodicidade</label><input type="text" id="prev-periodicidade" placeholder="Ex: Mensal, 500h" required></div>
+      <button type="submit" class="botao botao-secundario">+ Adicionar</button>
+    </form>
+  </div>
+
+  <div class="cartao" id="bloco-monitoramento" style="display:none;">
+    <h2>Monitoramento (inspeções)</h2>
+    <div class="tabela-scroll">
+      <table>
+        <thead><tr><th>Data</th><th>Responsável</th><th>Horímetro</th><th>Observações</th><th></th></tr></thead>
+        <tbody id="corpo-monitoramento"></tbody>
+      </table>
+    </div>
+    <div id="vazio-monitoramento" class="vazio" style="display:none;">Nenhum registro de monitoramento.</div>
+    <form id="form-monitoramento" class="form-inline" style="margin-top:0.9rem;">
+      <div class="campo"><label>Data</label><input type="date" id="mon-data" required></div>
+      <div class="campo"><label>Responsável</label><input type="text" id="mon-responsavel" required></div>
+      <div class="campo"><label>Horímetro</label><input type="text" id="mon-horimetro"></div>
+      <div class="campo"><label>Observações</label><input type="text" id="mon-observacoes"></div>
+      <button type="submit" class="botao botao-secundario">+ Adicionar</button>
+    </form>
+  </div>
+
+  <div class="cartao" id="bloco-falhas" style="display:none;">
+    <div class="linha-topo">
+      <h2 style="border:none; margin:0; padding:0;">Histórico de falhas / intervenções corretivas</h2>
+      <a id="link-nova-falha" href="falhas.html" class="botao botao-secundario botao-pequeno">Registrar nova falha</a>
+    </div>
+    <div class="tabela-scroll">
+      <table>
+        <thead><tr><th>Data</th><th>Descrição</th><th>Registrado por</th></tr></thead>
+        <tbody id="corpo-falhas"></tbody>
+      </table>
+    </div>
+    <div id="vazio-falhas" class="vazio" style="display:none;">Nenhuma falha registrada.</div>
+  </div>
+</div>
+
+<div class="container ficha-impressao" id="ficha-impressao"></div>
+
+<script src="js/api.js"></script>
+<script src="js/cadastro.js"></script>
+</body>
+</html>

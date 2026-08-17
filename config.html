@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Configurações - Manutenção Industrial</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="topbar no-print">
+  <div class="marca"><span class="pastilha">MANUTENÇÃO</span> Controle de Equipamentos</div>
+  <nav>
+    <a href="equipamentos.html">Equipamentos</a>
+    <a href="falhas.html">Registrar Falha</a>
+    <a href="config.html">Configurações</a>
+    <span class="usuario" id="nome-usuario"></span>
+    <button class="sair" onclick="sair()">Sair</button>
+  </nav>
+</div>
+
+<div class="container">
+  <div class="cartao">
+    <h2>E-mails para alerta de manutenção</h2>
+    <p style="color:#5b6b7a; font-size:0.88rem;">Na véspera da data programada de intervenção de qualquer equipamento, um e-mail automático é enviado para os endereços abaixo (requer o gatilho diário ativo no Apps Script — veja o README).</p>
+    <div class="tabela-scroll">
+      <table>
+        <thead><tr><th>E-mail</th><th></th></tr></thead>
+        <tbody id="corpo-emails"></tbody>
+      </table>
+    </div>
+    <div id="vazio-emails" class="vazio" style="display:none;">Nenhum e-mail cadastrado.</div>
+    <form id="form-email" class="form-inline" style="margin-top:0.9rem;">
+      <div class="campo"><label>Novo e-mail</label><input type="email" id="novo-email" required></div>
+      <button type="submit" class="botao botao-secundario">+ Adicionar</button>
+    </form>
+  </div>
+
+  <div class="cartao">
+    <h2>Usuários com acesso ao sistema</h2>
+    <div class="tabela-scroll">
+      <table>
+        <thead><tr><th>Nome</th><th>Usuário</th><th>Status</th><th></th></tr></thead>
+        <tbody id="corpo-usuarios"></tbody>
+      </table>
+    </div>
+    <form id="form-usuario" style="margin-top:0.9rem;">
+      <div class="grid-3">
+        <div class="campo"><label>Nome</label><input type="text" id="novo-nome" required></div>
+        <div class="campo"><label>Usuário (login)</label><input type="text" id="novo-usuario" required></div>
+        <div class="campo"><label>Senha</label><input type="password" id="nova-senha" required></div>
+      </div>
+      <button type="submit" class="botao botao-secundario">+ Adicionar usuário</button>
+      <div id="msg-usuario" class="erro" style="display:none;"></div>
+    </form>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/config.js"></script>
+</body>
+</html>

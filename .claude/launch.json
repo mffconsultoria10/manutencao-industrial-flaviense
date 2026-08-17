@@ -1,0 +1,15 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "static-site",
+      "runtimeExecutable": "powershell.exe",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", "C:\\Users\\MARCEL~1\\AppData\\Local\\Temp\\claude\\G--Meu-Drive-site-de-mnt\\ed888401-7474-4907-a27b-7b95b226784c\\scratchpad\\serve.ps1"
+      ],
+      "port": 8791
+    }
+  ]
+}

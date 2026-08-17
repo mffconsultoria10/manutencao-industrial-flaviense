@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login - Manutenção Industrial</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="tela-login">
+  <div class="cartao">
+    <div class="titulo">
+      <span class="pastilha">MANUTENÇÃO</span>
+      <h1 style="margin:0.3rem 0 0; font-size:1.2rem;">Controle de Equipamentos</h1>
+    </div>
+    <form id="form-login">
+      <div class="campo">
+        <label for="usuario">Usuário</label>
+        <input type="text" id="usuario" autocomplete="username" required>
+      </div>
+      <div class="campo">
+        <label for="senha">Senha</label>
+        <input type="password" id="senha" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="botao-primario" style="width:100%; justify-content:center;">Entrar</button>
+      <div id="msg-erro" class="erro" style="display:none;"></div>
+    </form>
+    <div class="dica">Primeiro acesso: usuário <b>admin</b> / senha <b>admin123</b> — troque em Configurações.</div>
+  </div>
+</div>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+</body>
+</html>
