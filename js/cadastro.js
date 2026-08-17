@@ -33,6 +33,7 @@
     dadosAtuais = resp.data;
     const eq = resp.data.equipamento;
     elTitulo.textContent = eq.Nome;
+    document.title = eq.Nome + ' - Manutenção Industrial Flaviense';
     elId.value = eq.ID;
     elNome.value = eq.Nome;
     elDescricao.value = eq.Descricao || '';
