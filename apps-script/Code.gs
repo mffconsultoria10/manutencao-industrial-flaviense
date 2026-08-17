@@ -15,6 +15,8 @@
  * Troque essa senha assim que possível na página de Configurações.
  */
 
+const VERSAO_CODIGO = 'v2-campos-falha-2026-08-17';
+
 const SHEETS = {
   EQUIPAMENTOS: 'Equipamentos',
   PREVENTIVAS: 'Preventivas',
@@ -317,6 +319,7 @@ function handle_(e) {
 }
 
 function route_(action, p) {
+  if (action === 'versao') return { ok: true, versao: VERSAO_CODIGO };
   if (action === 'login') return acaoLogin_(p);
 
   const sessao = validarSessao_(p.token);
