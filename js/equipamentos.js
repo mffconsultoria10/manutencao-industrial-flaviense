@@ -40,13 +40,19 @@
     });
   }
 
-  document.getElementById('busca').addEventListener('input', function (ev) {
-    const termo = ev.target.value.trim().toLowerCase();
+  function filtrar() {
+    const termo = document.getElementById('busca').value.trim().toLowerCase();
     if (!termo) { render(todos); return; }
     render(todos.filter(function (eq) {
       return String(eq.Nome).toLowerCase().indexOf(termo) !== -1 ||
         String(eq.ID).toLowerCase().indexOf(termo) !== -1;
     }));
+  }
+
+  document.getElementById('busca').addEventListener('input', filtrar);
+  document.getElementById('form-busca').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    filtrar();
   });
 
   (async function carregar() {

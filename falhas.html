@@ -23,10 +23,13 @@
     <h2>Registrar falha / intervenção corretiva</h2>
 
     <div id="etapa-busca">
-      <div class="campo">
-        <label for="busca-equipamento">Buscar equipamento por nome ou ID</label>
-        <input type="text" id="busca-equipamento" placeholder="Ex: Compressor ou EQ-0001" autocomplete="off">
-      </div>
+      <form id="form-busca-equipamento" class="form-inline">
+        <div class="campo">
+          <label for="busca-equipamento">Buscar equipamento por nome ou ID</label>
+          <input type="text" id="busca-equipamento" placeholder="Ex: Compressor ou EQ-0001" autocomplete="off">
+        </div>
+        <button type="submit" class="botao botao-primario">🔍 Buscar</button>
+      </form>
       <div id="lista-resultados" class="tabela-scroll"></div>
     </div>
 

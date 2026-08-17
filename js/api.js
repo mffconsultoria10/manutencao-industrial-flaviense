@@ -38,24 +38,65 @@ function verificarConfigApi() {
   return true;
 }
 
+let contadorRequisicoes = 0;
+
+function elementoCarregando_() {
+  let el = document.getElementById('indicador-carregando');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'indicador-carregando';
+    el.className = 'indicador-carregando no-print';
+    el.innerHTML = '<span class="spinner"></span><span>Processando...</span>';
+    document.body.appendChild(el);
+  }
+  return el;
+}
+
+function mostrarCarregando() {
+  contadorRequisicoes++;
+  elementoCarregando_().classList.add('ativo');
+}
+
+function esconderCarregando() {
+  contadorRequisicoes = Math.max(0, contadorRequisicoes - 1);
+  if (contadorRequisicoes === 0) {
+    const el = document.getElementById('indicador-carregando');
+    if (el) el.classList.remove('ativo');
+  }
+}
+
 async function apiGet(action, params) {
   if (!verificarConfigApi()) return { ok: false, error: 'api_nao_configurada' };
-  const sessao = getSessao();
-  const qs = new URLSearchParams(Object.assign({ action: action, token: sessao ? sessao.token : '' }, params || {}));
-  const resp = await fetch(API_URL + '?' + qs.toString());
-  const json = await resp.json();
-  if (!json.ok && json.error === 'sessao_invalida') { sair(); }
-  return json;
+  mostrarCarregando();
+  try {
+    const sessao = getSessao();
+    const qs = new URLSearchParams(Object.assign({ action: action, token: sessao ? sessao.token : '' }, params || {}));
+    const resp = await fetch(API_URL + '?' + qs.toString());
+    const json = await resp.json();
+    if (!json.ok && json.error === 'sessao_invalida') { sair(); }
+    return json;
+  } catch (err) {
+    return { ok: false, error: 'falha_conexao' };
+  } finally {
+    esconderCarregando();
+  }
 }
 
 async function apiPost(action, params) {
   if (!verificarConfigApi()) return { ok: false, error: 'api_nao_configurada' };
-  const sessao = getSessao();
-  const body = new URLSearchParams(Object.assign({ action: action, token: sessao ? sessao.token : '' }, params || {}));
-  const resp = await fetch(API_URL, { method: 'POST', body: body });
-  const json = await resp.json();
-  if (!json.ok && json.error === 'sessao_invalida') { sair(); }
-  return json;
+  mostrarCarregando();
+  try {
+    const sessao = getSessao();
+    const body = new URLSearchParams(Object.assign({ action: action, token: sessao ? sessao.token : '' }, params || {}));
+    const resp = await fetch(API_URL, { method: 'POST', body: body });
+    const json = await resp.json();
+    if (!json.ok && json.error === 'sessao_invalida') { sair(); }
+    return json;
+  } catch (err) {
+    return { ok: false, error: 'falha_conexao' };
+  } finally {
+    esconderCarregando();
+  }
 }
 
 function formatarData(iso) {

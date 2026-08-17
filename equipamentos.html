@@ -24,10 +24,13 @@
       <h2 style="border:none; margin:0; padding:0;">Equipamentos cadastrados</h2>
       <a href="cadastro.html" class="botao botao-ambar">+ Novo equipamento</a>
     </div>
-    <div class="campo" style="max-width:360px;">
-      <label for="busca">Buscar por nome ou ID</label>
-      <input type="text" id="busca" placeholder="Ex: Compressor ou EQ-0001">
-    </div>
+    <form id="form-busca" class="form-inline" style="max-width:520px;">
+      <div class="campo">
+        <label for="busca">Buscar por nome ou ID</label>
+        <input type="text" id="busca" placeholder="Ex: Compressor ou EQ-0001">
+      </div>
+      <button type="submit" class="botao botao-primario">🔍 Buscar</button>
+    </form>
     <div class="tabela-scroll">
       <table>
         <thead>

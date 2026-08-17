@@ -224,6 +224,33 @@ tbody tr:hover { background: #f8fafc; }
   margin-top: 0.9rem;
 }
 
+.indicador-carregando {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--azul-escuro);
+  color: #fff;
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(15, 36, 56, 0.3);
+}
+.indicador-carregando.ativo { display: flex; }
+.indicador-carregando .spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: girar 0.7s linear infinite;
+}
+@keyframes girar { to { transform: rotate(360deg); } }
+
 .ficha-impressao { display: none; }
 
 @media print {

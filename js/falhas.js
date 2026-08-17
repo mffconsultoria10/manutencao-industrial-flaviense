@@ -58,6 +58,10 @@
   buscaInput.addEventListener('input', function (ev) {
     renderResultados(ev.target.value.trim().toLowerCase());
   });
+  document.getElementById('form-busca-equipamento').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    renderResultados(buscaInput.value.trim().toLowerCase());
+  });
 
   document.getElementById('form-falha').addEventListener('submit', async function (ev) {
     ev.preventDefault();
