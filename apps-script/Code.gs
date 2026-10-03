@@ -28,7 +28,7 @@
  * com sucesso, eles ficariam duplicados.
  */
 
-const VERSAO_CODIGO = 'v3-supabase-2026-10-03';
+const VERSAO_CODIGO = 'v4-fotos-falhas-2026-10-03';
 
 // ---------------------------------------------------------------------
 // Supabase - cliente REST (PostgREST)
@@ -139,7 +139,8 @@ function mapFalha_(r) {
     ParadaProducao: r.parada_producao,
     EquipeResponsavel: r.equipe,
     EmpresaTerceirizada: r.empresa_terceirizada,
-    Custo: r.custo
+    Custo: r.custo,
+    Fotos: r.fotos || []
   };
 }
 
@@ -253,6 +254,10 @@ function adicionarMonitoramento_(p) {
 }
 
 function adicionarFalha_(p) {
+  let fotos = [];
+  if (p.fotos) {
+    try { fotos = JSON.parse(p.fotos); } catch (err) { fotos = []; }
+  }
   const row = supabaseInsert_('flaviense_falhas', {
     equipamento_id: p.equipamentoId,
     data: p.data,
@@ -261,9 +266,43 @@ function adicionarFalha_(p) {
     parada_producao: p.paradaProducao === 'true',
     equipe: p.equipeResponsavel || null,
     empresa_terceirizada: p.empresaTerceirizada || null,
-    custo: p.custo ? parseFloat(p.custo) : null
+    custo: p.custo ? parseFloat(p.custo) : null,
+    fotos: fotos
   });
   return { id: row.id };
+}
+
+// ---------------------------------------------------------------------
+// Fotos (Supabase Storage)
+// ---------------------------------------------------------------------
+
+const BUCKET_FOTOS = 'flaviense-fotos';
+
+function supabaseStorageUpload_(bucket, caminho, bytes, mimeType) {
+  const url = supabaseUrl_() + '/storage/v1/object/' + bucket + '/' + caminho;
+  const key = supabaseKey_();
+  const resp = UrlFetchApp.fetch(url, {
+    method: 'post',
+    contentType: mimeType,
+    payload: bytes,
+    headers: { apikey: key, Authorization: 'Bearer ' + key },
+    muteHttpExceptions: true
+  });
+  const code = resp.getResponseCode();
+  if (code >= 400) {
+    throw new Error('Falha ao enviar foto (' + code + '): ' + resp.getContentText());
+  }
+  return supabaseUrl_() + '/storage/v1/object/public/' + bucket + '/' + caminho;
+}
+
+function uploadFoto_(p) {
+  if (!p.base64) throw new Error('Nenhuma imagem enviada');
+  const bytes = Utilities.base64Decode(p.base64);
+  const tipo = p.tipo || 'image/jpeg';
+  const extensao = tipo.indexOf('png') !== -1 ? 'png' : 'jpg';
+  const caminho = 'falhas/' + new Date().getTime() + '-' + Math.floor(Math.random() * 100000) + '.' + extensao;
+  const urlPublica = supabaseStorageUpload_(BUCKET_FOTOS, caminho, bytes, tipo);
+  return { url: urlPublica };
 }
 
 function removerPorId_(tabela, id) {
@@ -343,6 +382,7 @@ function route_(action, p) {
     case 'adicionarMonitoramento': return { ok: true, data: adicionarMonitoramento_(p) };
     case 'removerMonitoramento': return { ok: true, data: removerPorId_('flaviense_monitoramento', p.row) };
     case 'adicionarFalha': return { ok: true, data: adicionarFalha_(p) };
+    case 'uploadFoto': return { ok: true, data: uploadFoto_(p) };
     case 'listarAlertaEmails': return { ok: true, data: listarAlertaEmails_() };
     case 'adicionarAlertaEmail': return { ok: true, data: adicionarAlertaEmail_(p) };
     case 'removerAlertaEmail': return { ok: true, data: removerPorId_('flaviense_emails_alerta', p.row) };

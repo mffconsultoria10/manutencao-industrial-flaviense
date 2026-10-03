@@ -102,6 +102,15 @@
     return f.EquipeResponsavel === 'Terceirizada' ? 'Terceirizada' : 'Própria';
   }
 
+  function renderFotos(fotos) {
+    if (!fotos || !fotos.length) return '—';
+    return fotos.map(function (url) {
+      return '<a href="' + encodeURI(url) + '" target="_blank" rel="noopener">' +
+        '<img src="' + encodeURI(url) + '" alt="Foto da falha" style="width:40px; height:40px; object-fit:cover; border-radius:4px; border:1px solid var(--cinza-borda); margin-right:4px;">' +
+        '</a>';
+    }).join('');
+  }
+
   function renderFalhas(lista) {
     const corpo = document.getElementById('corpo-falhas');
     const vazio = document.getElementById('vazio-falhas');
@@ -115,7 +124,8 @@
         '<td>' + formatarEquipe(f) + '</td>' +
         '<td>' + escapeHtml(f.EmpresaTerceirizada || '—') + '</td>' +
         '<td>' + formatarMoeda(f.Custo) + '</td>' +
-        '<td>' + escapeHtml(f.RegistradoPor) + '</td>';
+        '<td>' + escapeHtml(f.RegistradoPor) + '</td>' +
+        '<td>' + renderFotos(f.Fotos) + '</td>';
       corpo.appendChild(tr);
     });
   }
