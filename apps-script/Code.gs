@@ -19,7 +19,7 @@
  *                              (aistudio.google.com/apikey), usada para
  *                              preencher o formulário automaticamente a
  *                              partir de foto/PDF do papel preenchido à mão
- *   GEMINI_MODEL           -> opcional; padrão "gemini-2.0-flash" se não
+ *   GEMINI_MODEL           -> opcional; padrão "gemini-3.8-flash" se não
  *                              configurado
  *
  * MIGRAÇÃO ÚNICA: se a planilha ainda tem os dados antigos (abas
@@ -34,7 +34,7 @@
  * com sucesso, eles ficariam duplicados.
  */
 
-const VERSAO_CODIGO = 'v8-redefinir-senha-2026-10-03';
+const VERSAO_CODIGO = 'v9-gemini-3-8-flash-2026-10-03';
 
 // ---------------------------------------------------------------------
 // Supabase - cliente REST (PostgREST)
@@ -335,7 +335,7 @@ function geminiApiKey_() {
 }
 
 function geminiModel_() {
-  return PropertiesService.getScriptProperties().getProperty('GEMINI_MODEL') || 'gemini-2.0-flash';
+  return PropertiesService.getScriptProperties().getProperty('GEMINI_MODEL') || 'gemini-3.8-flash';
 }
 
 function extrairFormulario_(p) {
