@@ -352,6 +352,14 @@ tbody tr:hover { background: #f8fafc; }
 }
 @keyframes girar { to { transform: rotate(360deg); } }
 
+.botao-gravando {
+  background: var(--vermelho) !important;
+  color: #fff !important;
+  border-color: var(--vermelho) !important;
+  animation: pulsar-gravando 1.2s ease-in-out infinite;
+}
+@keyframes pulsar-gravando { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+
 .ficha-impressao { display: none; }
 
 @media print {

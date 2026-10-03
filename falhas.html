@@ -60,8 +60,12 @@
           </div>
         </div>
         <div class="campo">
-          <label for="falha-descricao">Descrição da falha</label>
-          <textarea id="falha-descricao" rows="4" required></textarea>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; margin-bottom:0.3rem;">
+            <label for="falha-descricao" style="margin-bottom:0;">Descrição da falha</label>
+            <button type="button" class="botao botao-secundario botao-pequeno" id="btn-ditado">🎤 Ditar</button>
+          </div>
+          <textarea id="falha-descricao" rows="4" required placeholder="Digite ou use o botão Ditar para falar a descrição"></textarea>
+          <div id="msg-ditado-indisponivel" class="vazio" style="display:none; margin-top:0.3rem; font-size:0.8rem;">Ditado por voz não é suportado neste navegador. Use Chrome ou Edge.</div>
         </div>
 
         <div class="campo">

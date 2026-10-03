@@ -93,6 +93,80 @@
     selecionado = todos.find(function (x) { return x.ID === ev.target.value; }) || null;
   });
 
+  // ---------------------------------------------------------------------
+  // Ditado por voz (Web Speech API) na descrição da falha
+  // ---------------------------------------------------------------------
+  (function configurarDitado() {
+    const elDescricao = document.getElementById('falha-descricao');
+    const btnDitado = document.getElementById('btn-ditado');
+    const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognitionCtor) {
+      btnDitado.style.display = 'none';
+      document.getElementById('msg-ditado-indisponivel').style.display = 'block';
+      return;
+    }
+
+    const recognition = new SpeechRecognitionCtor();
+    recognition.lang = 'pt-BR';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    let gravando = false;
+    let textoBase = '';
+
+    function atualizarBotao() {
+      btnDitado.textContent = gravando ? '⏹ Parar' : '🎤 Ditar';
+      btnDitado.classList.toggle('botao-gravando', gravando);
+    }
+
+    recognition.addEventListener('result', function (ev) {
+      let textoFinal = '';
+      let textoInterino = '';
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const transcricao = ev.results[i][0].transcript;
+        if (ev.results[i].isFinal) {
+          textoFinal += transcricao;
+        } else {
+          textoInterino += transcricao;
+        }
+      }
+      if (textoFinal) {
+        textoBase = (textoBase ? textoBase.trim() + ' ' : '') + textoFinal.trim();
+      }
+      elDescricao.value = textoBase + (textoInterino ? (textoBase ? ' ' : '') + textoInterino : '');
+    });
+
+    recognition.addEventListener('end', function () {
+      gravando = false;
+      atualizarBotao();
+    });
+
+    recognition.addEventListener('error', function (ev) {
+      gravando = false;
+      atualizarBotao();
+      if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') {
+        alert('Permissão de microfone negada. Permita o acesso ao microfone no navegador para usar o ditado por voz.');
+      }
+    });
+
+    btnDitado.addEventListener('click', function () {
+      if (gravando) {
+        recognition.stop();
+        return;
+      }
+      textoBase = elDescricao.value;
+      try {
+        recognition.start();
+        gravando = true;
+        atualizarBotao();
+      } catch (err) {
+        gravando = false;
+        atualizarBotao();
+      }
+    });
+  })();
+
   const radiosEquipe = document.getElementsByName('equipe');
   const campoEmpresa = document.getElementById('campo-empresa-terceirizada');
   function atualizarCampoEmpresa() {
