@@ -9,131 +9,128 @@
  *
  * A URL gerada deve ser colada em js/api.js (variável API_URL).
  *
- * Na primeira execução, o script cria automaticamente todas as abas
- * necessárias na planilha e um usuário administrador padrão:
- *   usuário: admin   senha: admin123
- * Troque essa senha assim que possível na página de Configurações.
+ * ARMAZENAMENTO: os dados agora ficam no Supabase (Postgres), não mais na
+ * planilha. Antes de usar, configure em Projeto > Propriedades do script
+ * (ícone de engrenagem > Propriedades do script) duas propriedades:
+ *   SUPABASE_URL           -> URL do projeto, ex: https://xxxx.supabase.co
+ *   SUPABASE_SERVICE_KEY   -> a chave "service_role" (secreta) do projeto
+ *                              (Project Settings > API Keys no Supabase)
+ *
+ * MIGRAÇÃO ÚNICA: se a planilha ainda tem os dados antigos (abas
+ * Equipamentos, Usuarios, Falhas, etc.) e o Supabase está vazio, rode UMA
+ * VEZ manualmente a função "migrarPlanilhaParaSupabase" pelo editor do
+ * Apps Script (selecione a função no menu suspenso e clique em Executar).
+ * Ela copia tudo da planilha para o Supabase e se recusa a rodar de novo
+ * se já houver equipamentos lá, para não duplicar.
  */
 
-const VERSAO_CODIGO = 'v2-campos-falha-2026-08-17';
-
-const SHEETS = {
-  EQUIPAMENTOS: 'Equipamentos',
-  PREVENTIVAS: 'Preventivas',
-  MONITORAMENTO: 'Monitoramento',
-  FALHAS: 'Falhas',
-  USUARIOS: 'Usuarios',
-  ALERTAS: 'AlertaEmails',
-  SESSOES: 'Sessoes'
-};
-
-const HEADERS = {
-  Equipamentos: ['ID', 'Nome', 'Descricao', 'Local', 'DataProximaIntervencao', 'CriadoEm', 'AtualizadoEm'],
-  Preventivas: ['ID', 'EquipamentoID', 'Descricao', 'Periodicidade', 'CriadoEm'],
-  Monitoramento: ['ID', 'EquipamentoID', 'Data', 'Responsavel', 'Horimetro', 'Observacoes', 'CriadoEm'],
-  Falhas: ['ID', 'EquipamentoID', 'Data', 'Descricao', 'RegistradoPor', 'CriadoEm', 'ParadaProducao', 'EquipeResponsavel', 'EmpresaTerceirizada', 'Custo'],
-  Usuarios: ['Nome', 'Usuario', 'SenhaHash', 'Ativo', 'CriadoEm'],
-  AlertaEmails: ['Email', 'Ativo', 'CriadoEm'],
-  Sessoes: ['Token', 'Usuario', 'Nome', 'ExpiraEm']
-};
+const VERSAO_CODIGO = 'v3-supabase-2026-10-03';
 
 // ---------------------------------------------------------------------
-// Infraestrutura da planilha
+// Supabase - cliente REST (PostgREST)
 // ---------------------------------------------------------------------
 
-function ensureSheets_() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  Object.keys(HEADERS).forEach(function (name) {
-    let sheet = ss.getSheetByName(name);
-    let criadaAgora = false;
-    if (!sheet) {
-      sheet = ss.insertSheet(name);
-      criadaAgora = true;
-    }
-    if (sheet.getLastRow() === 0) {
-      sheet.appendRow(HEADERS[name]);
-      sheet.setFrozenRows(1);
-      criadaAgora = true;
-    } else {
-      migrarCabecalho_(sheet, HEADERS[name]);
-    }
-    if (criadaAgora && name === SHEETS.USUARIOS && sheet.getLastRow() === 1) {
-      sheet.appendRow(['Administrador', 'admin', sha256Hex_('admin123'), true, new Date()]);
-    }
-  });
-
-  ['Sheet1', 'Página1', 'Planilha1'].forEach(function (nomePadrao) {
-    const def = ss.getSheetByName(nomePadrao);
-    if (def && def.getLastRow() === 0 && ss.getSheets().length > 1) {
-      ss.deleteSheet(def);
-    }
-  });
+function supabaseUrl_() {
+  const url = PropertiesService.getScriptProperties().getProperty('SUPABASE_URL');
+  if (!url) throw new Error('Propriedade SUPABASE_URL não configurada (Projeto > Propriedades do script).');
+  return url.replace(/\/+$/, '');
 }
 
-/**
- * Adiciona ao final da linha de cabeçalho quaisquer colunas novas
- * previstas em HEADERS que ainda não existam na planilha real, sem
- * mexer nas colunas já existentes (preserva dados já cadastrados).
- */
-function migrarCabecalho_(sheet, headersEsperados) {
-  const ultimaColuna = sheet.getLastColumn();
-  const cabecalhoAtual = ultimaColuna > 0 ? sheet.getRange(1, 1, 1, ultimaColuna).getValues()[0] : [];
-  const faltando = headersEsperados.filter(function (h) { return cabecalhoAtual.indexOf(h) === -1; });
-  if (faltando.length) {
-    sheet.getRange(1, cabecalhoAtual.length + 1, 1, faltando.length).setValues([faltando]);
+function supabaseKey_() {
+  const key = PropertiesService.getScriptProperties().getProperty('SUPABASE_SERVICE_KEY');
+  if (!key) throw new Error('Propriedade SUPABASE_SERVICE_KEY não configurada (Projeto > Propriedades do script).');
+  return key;
+}
+
+function supabaseRequest_(method, path, options) {
+  options = options || {};
+  const url = supabaseUrl_() + '/rest/v1/' + path;
+  const key = supabaseKey_();
+  const headers = Object.assign({
+    apikey: key,
+    Authorization: 'Bearer ' + key,
+    'Content-Type': 'application/json'
+  }, options.headers || {});
+  const params = { method: method, headers: headers, muteHttpExceptions: true };
+  if (options.body !== undefined) params.payload = JSON.stringify(options.body);
+  const resp = UrlFetchApp.fetch(url, params);
+  const code = resp.getResponseCode();
+  const text = resp.getContentText();
+  if (code >= 400) {
+    throw new Error('Supabase ' + method + ' ' + path + ' falhou (' + code + '): ' + text);
   }
+  return text ? JSON.parse(text) : null;
 }
 
-function getSheet_(name) {
-  return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name);
+function eq_(coluna, valor) {
+  return coluna + '=eq.' + encodeURIComponent(valor);
 }
 
-function sheetToObjects_(name) {
-  const sheet = getSheet_(name);
-  const values = sheet.getDataRange().getValues();
-  const headers = values.shift();
-  return values.map(function (row, idx) {
-    const obj = { _row: idx + 2 };
-    headers.forEach(function (h, i) { obj[h] = row[i]; });
-    return obj;
-  });
+function supabaseSelect_(tabela, query) {
+  return supabaseRequest_('GET', tabela + (query ? '?' + query : '')) || [];
 }
 
-function appendRow_(name, obj) {
-  const sheet = getSheet_(name);
-  const headers = HEADERS[name];
-  const row = headers.map(function (h) { return obj[h] !== undefined ? obj[h] : ''; });
-  sheet.appendRow(row);
-  return sheet.getLastRow();
+function supabaseInsert_(tabela, objeto) {
+  const linhas = supabaseRequest_('POST', tabela, { body: objeto, headers: { Prefer: 'return=representation' } });
+  return linhas && linhas[0];
 }
 
-function updateRow_(name, rowIndex, obj) {
-  const sheet = getSheet_(name);
-  const headers = HEADERS[name];
-  headers.forEach(function (h, i) {
-    if (obj[h] !== undefined) sheet.getRange(rowIndex, i + 1).setValue(obj[h]);
-  });
+function supabaseUpdate_(tabela, query, patch) {
+  return supabaseRequest_('PATCH', tabela + '?' + query, { body: patch, headers: { Prefer: 'return=representation' } });
 }
 
-function deleteRow_(name, rowIndex) {
-  getSheet_(name).deleteRow(rowIndex);
+function supabaseDelete_(tabela, query) {
+  return supabaseRequest_('DELETE', tabela + '?' + query, { headers: { Prefer: 'return=representation' } });
 }
 
-function limparObjeto_(o) {
-  const out = {};
-  Object.keys(o).forEach(function (k) {
-    const v = o[k];
-    out[k] = (v instanceof Date) ? v.toISOString() : v;
-  });
-  return out;
+// ---------------------------------------------------------------------
+// Conversão entre colunas do Postgres (snake_case) e o formato que o
+// frontend já espera (PascalCase, igual aos cabeçalhos da planilha antiga)
+// ---------------------------------------------------------------------
+
+function mapEquipamento_(r) {
+  return {
+    _row: r.id,
+    ID: r.id,
+    Nome: r.nome,
+    Descricao: r.descricao,
+    Local: r.local,
+    DataProximaIntervencao: r.data_proxima_intervencao,
+    CriadoEm: r.criado_em,
+    AtualizadoEm: r.atualizado_em
+  };
 }
 
-function sha256Hex_(text) {
-  const raw = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, text, Utilities.Charset.UTF_8);
-  return raw.map(function (byte) {
-    const v = (byte < 0 ? byte + 256 : byte).toString(16);
-    return v.length === 1 ? '0' + v : v;
-  }).join('');
+function mapPreventiva_(r) {
+  return { _row: r.id, ID: r.id, EquipamentoID: r.equipamento_id, Descricao: r.descricao, Periodicidade: r.periodicidade, CriadoEm: r.criado_em };
+}
+
+function mapMonitoramento_(r) {
+  return { _row: r.id, ID: r.id, EquipamentoID: r.equipamento_id, Data: r.data, Responsavel: r.responsavel, Horimetro: r.horimetro, Observacoes: r.observacoes, CriadoEm: r.criado_em };
+}
+
+function mapFalha_(r) {
+  return {
+    _row: r.id,
+    ID: r.id,
+    EquipamentoID: r.equipamento_id,
+    Data: r.data,
+    Descricao: r.descricao,
+    RegistradoPor: r.registrado_por,
+    CriadoEm: r.criado_em,
+    ParadaProducao: r.parada_producao,
+    EquipeResponsavel: r.equipe,
+    EmpresaTerceirizada: r.empresa_terceirizada,
+    Custo: r.custo
+  };
+}
+
+function mapUsuario_(r) {
+  return { _row: r.id, Nome: r.nome, Usuario: r.usuario, Ativo: r.ativo, CriadoEm: r.criado_em };
+}
+
+function mapEmail_(r) {
+  return { _row: r.id, Email: r.email, Ativo: true };
 }
 
 // ---------------------------------------------------------------------
@@ -143,33 +140,31 @@ function sha256Hex_(text) {
 function criarSessao_(usuario, nome) {
   const token = Utilities.getUuid();
   const expira = new Date(Date.now() + 8 * 60 * 60 * 1000);
-  appendRow_(SHEETS.SESSOES, { Token: token, Usuario: usuario, Nome: nome, ExpiraEm: expira });
+  supabaseInsert_('flaviense_sessoes', { token: token, usuario: usuario, nome: nome, expira_em: expira.toISOString() });
   return token;
 }
 
 function validarSessao_(token) {
   if (!token) return null;
-  const items = sheetToObjects_(SHEETS.SESSOES);
-  const now = new Date();
-  for (let i = 0; i < items.length; i++) {
-    if (items[i].Token === token) {
-      if (new Date(items[i].ExpiraEm) > now) return items[i];
-      return null;
-    }
+  const linhas = supabaseSelect_('flaviense_sessoes', eq_('token', token));
+  if (!linhas.length) return null;
+  const sessao = linhas[0];
+  if (new Date(sessao.expira_em) > new Date()) {
+    return { Usuario: sessao.usuario, Nome: sessao.nome };
   }
   return null;
 }
 
 function acaoLogin_(p) {
-  const usuarios = sheetToObjects_(SHEETS.USUARIOS);
+  const usuarios = supabaseSelect_('flaviense_usuarios', '');
   const found = usuarios.find(function (u) {
-    return String(u.Usuario).toLowerCase() === String(p.usuario || '').toLowerCase() && u.Ativo === true;
+    return String(u.usuario).toLowerCase() === String(p.usuario || '').toLowerCase() && u.ativo === true;
   });
-  if (!found || found.SenhaHash !== p.senhaHash) {
+  if (!found || found.senha_hash !== p.senhaHash) {
     return { ok: false, error: 'credenciais_invalidas' };
   }
-  const token = criarSessao_(found.Usuario, found.Nome);
-  return { ok: true, token: token, nome: found.Nome, usuario: found.Usuario };
+  const token = criarSessao_(found.usuario, found.nome);
+  return { ok: true, token: token, nome: found.nome, usuario: found.usuario };
 }
 
 // ---------------------------------------------------------------------
@@ -177,49 +172,47 @@ function acaoLogin_(p) {
 // ---------------------------------------------------------------------
 
 function proximoIdEquipamento_() {
-  const items = sheetToObjects_(SHEETS.EQUIPAMENTOS);
+  const linhas = supabaseSelect_('flaviense_equipamentos', 'select=id');
   let max = 0;
-  items.forEach(function (it) {
-    const m = String(it.ID).match(/(\d+)/);
+  linhas.forEach(function (it) {
+    const m = String(it.id).match(/(\d+)/);
     if (m) max = Math.max(max, parseInt(m[1], 10));
   });
   return 'EQ-' + String(max + 1).padStart(4, '0');
 }
 
 function listarEquipamentos_() {
-  return sheetToObjects_(SHEETS.EQUIPAMENTOS).map(limparObjeto_);
+  return supabaseSelect_('flaviense_equipamentos', '').map(mapEquipamento_);
 }
 
 function obterEquipamentoCompleto_(id) {
-  const equipamentos = sheetToObjects_(SHEETS.EQUIPAMENTOS);
-  const eq = equipamentos.find(function (x) { return x.ID === id; });
-  if (!eq) return null;
-  const preventivas = sheetToObjects_(SHEETS.PREVENTIVAS).filter(function (x) { return x.EquipamentoID === id; });
-  const monitoramento = sheetToObjects_(SHEETS.MONITORAMENTO).filter(function (x) { return x.EquipamentoID === id; });
-  const falhas = sheetToObjects_(SHEETS.FALHAS).filter(function (x) { return x.EquipamentoID === id; });
+  const linhas = supabaseSelect_('flaviense_equipamentos', eq_('id', id));
+  if (!linhas.length) return null;
+  const preventivas = supabaseSelect_('flaviense_preventivas', eq_('equipamento_id', id)).map(mapPreventiva_);
+  const monitoramento = supabaseSelect_('flaviense_monitoramento', eq_('equipamento_id', id)).map(mapMonitoramento_);
+  const falhas = supabaseSelect_('flaviense_falhas', eq_('equipamento_id', id)).map(mapFalha_);
   return {
-    equipamento: limparObjeto_(eq),
-    preventivas: preventivas.map(limparObjeto_),
-    monitoramento: monitoramento.map(limparObjeto_),
-    falhas: falhas.map(limparObjeto_)
+    equipamento: mapEquipamento_(linhas[0]),
+    preventivas: preventivas,
+    monitoramento: monitoramento,
+    falhas: falhas
   };
 }
 
 function salvarEquipamento_(p) {
-  const equipamentos = sheetToObjects_(SHEETS.EQUIPAMENTOS);
   if (p.id) {
-    const eq = equipamentos.find(function (x) { return x.ID === p.id; });
-    if (!eq) throw new Error('Equipamento não encontrado');
-    updateRow_(SHEETS.EQUIPAMENTOS, eq._row, {
-      Nome: p.nome, Descricao: p.descricao, Local: p.local,
-      DataProximaIntervencao: p.dataProxima || '', AtualizadoEm: new Date()
+    const linhas = supabaseUpdate_('flaviense_equipamentos', eq_('id', p.id), {
+      nome: p.nome, descricao: p.descricao, local: p.local,
+      data_proxima_intervencao: p.dataProxima || null, atualizado_em: new Date().toISOString()
     });
+    if (!linhas || !linhas.length) throw new Error('Equipamento não encontrado');
     return { id: p.id };
   }
   const novoId = proximoIdEquipamento_();
-  appendRow_(SHEETS.EQUIPAMENTOS, {
-    ID: novoId, Nome: p.nome, Descricao: p.descricao, Local: p.local,
-    DataProximaIntervencao: p.dataProxima || '', CriadoEm: new Date(), AtualizadoEm: new Date()
+  supabaseInsert_('flaviense_equipamentos', {
+    id: novoId, nome: p.nome, descricao: p.descricao, local: p.local,
+    data_proxima_intervencao: p.dataProxima || null,
+    criado_em: new Date().toISOString(), atualizado_em: new Date().toISOString()
   });
   return { id: novoId };
 }
@@ -229,36 +222,34 @@ function salvarEquipamento_(p) {
 // ---------------------------------------------------------------------
 
 function adicionarPreventiva_(p) {
-  const id = new Date().getTime();
-  appendRow_(SHEETS.PREVENTIVAS, { ID: id, EquipamentoID: p.equipamentoId, Descricao: p.descricao, Periodicidade: p.periodicidade, CriadoEm: new Date() });
-  return { id: id };
+  const row = supabaseInsert_('flaviense_preventivas', { equipamento_id: p.equipamentoId, descricao: p.descricao, periodicidade: p.periodicidade });
+  return { id: row.id };
 }
 
 function adicionarMonitoramento_(p) {
-  const id = new Date().getTime();
-  appendRow_(SHEETS.MONITORAMENTO, { ID: id, EquipamentoID: p.equipamentoId, Data: p.data, Responsavel: p.responsavel, Horimetro: p.horimetro, Observacoes: p.observacoes || '', CriadoEm: new Date() });
-  return { id: id };
+  const row = supabaseInsert_('flaviense_monitoramento', {
+    equipamento_id: p.equipamentoId, data: p.data, responsavel: p.responsavel,
+    horimetro: p.horimetro || null, observacoes: p.observacoes || null
+  });
+  return { id: row.id };
 }
 
 function adicionarFalha_(p) {
-  const id = new Date().getTime();
-  appendRow_(SHEETS.FALHAS, {
-    ID: id,
-    EquipamentoID: p.equipamentoId,
-    Data: p.data,
-    Descricao: p.descricao,
-    RegistradoPor: p.registradoPor,
-    CriadoEm: new Date(),
-    ParadaProducao: p.paradaProducao === 'true',
-    EquipeResponsavel: p.equipeResponsavel || '',
-    EmpresaTerceirizada: p.empresaTerceirizada || '',
-    Custo: p.custo || ''
+  const row = supabaseInsert_('flaviense_falhas', {
+    equipamento_id: p.equipamentoId,
+    data: p.data,
+    descricao: p.descricao,
+    registrado_por: p.registradoPor,
+    parada_producao: p.paradaProducao === 'true',
+    equipe: p.equipeResponsavel || null,
+    empresa_terceirizada: p.empresaTerceirizada || null,
+    custo: p.custo ? parseFloat(p.custo) : null
   });
-  return { id: id };
+  return { id: row.id };
 }
 
-function removerLinha_(sheetName, row) {
-  deleteRow_(sheetName, parseInt(row, 10));
+function removerPorId_(tabela, id) {
+  supabaseDelete_(tabela, eq_('id', id));
   return { removido: true };
 }
 
@@ -266,8 +257,12 @@ function removerLinha_(sheetName, row) {
 // E-mails de alerta
 // ---------------------------------------------------------------------
 
+function listarAlertaEmails_() {
+  return supabaseSelect_('flaviense_emails_alerta', '').map(mapEmail_);
+}
+
 function adicionarAlertaEmail_(p) {
-  appendRow_(SHEETS.ALERTAS, { Email: p.email, Ativo: true, CriadoEm: new Date() });
+  supabaseInsert_('flaviense_emails_alerta', { email: p.email });
   return { ok: true };
 }
 
@@ -276,25 +271,22 @@ function adicionarAlertaEmail_(p) {
 // ---------------------------------------------------------------------
 
 function listarUsuarios_() {
-  return sheetToObjects_(SHEETS.USUARIOS).map(function (u) {
-    return { _row: u._row, Nome: u.Nome, Usuario: u.Usuario, Ativo: u.Ativo };
-  });
+  return supabaseSelect_('flaviense_usuarios', '').map(mapUsuario_);
 }
 
 function adicionarUsuario_(p) {
-  const usuarios = sheetToObjects_(SHEETS.USUARIOS);
-  if (usuarios.some(function (u) { return String(u.Usuario).toLowerCase() === String(p.usuario).toLowerCase(); })) {
+  const existentes = supabaseSelect_('flaviense_usuarios', '').map(mapUsuario_);
+  if (existentes.some(function (u) { return String(u.Usuario).toLowerCase() === String(p.usuario).toLowerCase(); })) {
     throw new Error('Usuário já existe');
   }
-  appendRow_(SHEETS.USUARIOS, { Nome: p.nome, Usuario: p.usuario, SenhaHash: p.senhaHash, Ativo: true, CriadoEm: new Date() });
+  supabaseInsert_('flaviense_usuarios', { nome: p.nome, usuario: p.usuario, senha_hash: p.senhaHash, ativo: true });
   return { ok: true };
 }
 
 function alternarUsuario_(p) {
-  const usuarios = sheetToObjects_(SHEETS.USUARIOS);
-  const u = usuarios.find(function (x) { return String(x.Usuario) === String(p.usuario); });
-  if (!u) throw new Error('Usuário não encontrado');
-  updateRow_(SHEETS.USUARIOS, u._row, { Ativo: !u.Ativo });
+  const linhas = supabaseSelect_('flaviense_usuarios', eq_('usuario', p.usuario));
+  if (!linhas.length) throw new Error('Usuário não encontrado');
+  supabaseUpdate_('flaviense_usuarios', eq_('usuario', p.usuario), { ativo: !linhas[0].ativo });
   return { ok: true };
 }
 
@@ -306,7 +298,6 @@ function doGet(e) { return handle_(e); }
 function doPost(e) { return handle_(e); }
 
 function handle_(e) {
-  ensureSheets_();
   const p = (e && e.parameter) || {};
   const action = p.action;
   let result;
@@ -330,13 +321,13 @@ function route_(action, p) {
     case 'obterEquipamento': return { ok: true, data: obterEquipamentoCompleto_(p.id) };
     case 'salvarEquipamento': return { ok: true, data: salvarEquipamento_(p) };
     case 'adicionarPreventiva': return { ok: true, data: adicionarPreventiva_(p) };
-    case 'removerPreventiva': return { ok: true, data: removerLinha_(SHEETS.PREVENTIVAS, p.row) };
+    case 'removerPreventiva': return { ok: true, data: removerPorId_('flaviense_preventivas', p.row) };
     case 'adicionarMonitoramento': return { ok: true, data: adicionarMonitoramento_(p) };
-    case 'removerMonitoramento': return { ok: true, data: removerLinha_(SHEETS.MONITORAMENTO, p.row) };
+    case 'removerMonitoramento': return { ok: true, data: removerPorId_('flaviense_monitoramento', p.row) };
     case 'adicionarFalha': return { ok: true, data: adicionarFalha_(p) };
-    case 'listarAlertaEmails': return { ok: true, data: sheetToObjects_(SHEETS.ALERTAS) };
+    case 'listarAlertaEmails': return { ok: true, data: listarAlertaEmails_() };
     case 'adicionarAlertaEmail': return { ok: true, data: adicionarAlertaEmail_(p) };
-    case 'removerAlertaEmail': return { ok: true, data: removerLinha_(SHEETS.ALERTAS, p.row) };
+    case 'removerAlertaEmail': return { ok: true, data: removerPorId_('flaviense_emails_alerta', p.row) };
     case 'listarUsuarios': return { ok: true, data: listarUsuarios_() };
     case 'adicionarUsuario': return { ok: true, data: adicionarUsuario_(p) };
     case 'alternarUsuario': return { ok: true, data: alternarUsuario_(p) };
@@ -349,11 +340,8 @@ function route_(action, p) {
 // ---------------------------------------------------------------------
 
 function verificarAlertasDiarios() {
-  ensureSheets_();
-  const equipamentos = sheetToObjects_(SHEETS.EQUIPAMENTOS);
-  const emails = sheetToObjects_(SHEETS.ALERTAS)
-    .filter(function (e) { return e.Ativo === true && e.Email; })
-    .map(function (e) { return e.Email; });
+  const equipamentos = listarEquipamentos_();
+  const emails = listarAlertaEmails_().map(function (e) { return e.Email; }).filter(Boolean);
   if (!emails.length) return;
 
   const amanha = new Date();
@@ -391,4 +379,104 @@ function criarGatilhoDiario() {
     if (t.getHandlerFunction() === 'verificarAlertasDiarios') ScriptApp.deleteTrigger(t);
   });
   ScriptApp.newTrigger('verificarAlertasDiarios').timeBased().everyDays(1).atHour(7).create();
+}
+
+// ---------------------------------------------------------------------
+// Migração única: planilha (Google Sheets) -> Supabase
+// ---------------------------------------------------------------------
+
+const SHEETS_LEGADO = {
+  EQUIPAMENTOS: 'Equipamentos',
+  PREVENTIVAS: 'Preventivas',
+  MONITORAMENTO: 'Monitoramento',
+  FALHAS: 'Falhas',
+  USUARIOS: 'Usuarios',
+  ALERTAS: 'AlertaEmails'
+};
+
+function sheetToObjectsLegado_(nome) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(nome);
+  if (!sheet) return [];
+  const values = sheet.getDataRange().getValues();
+  const headers = values.shift();
+  return values.map(function (row) {
+    const obj = {};
+    headers.forEach(function (h, i) { obj[h] = row[i]; });
+    return obj;
+  });
+}
+
+function formatarDataSql_(v) {
+  if (!v) return null;
+  const d = (v instanceof Date) ? v : new Date(v);
+  if (isNaN(d.getTime())) return null;
+  return Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+}
+
+function toIso_(v) {
+  if (!v) return null;
+  const d = (v instanceof Date) ? v : new Date(v);
+  if (isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
+/**
+ * Copia os dados da planilha (abas antigas) para o Supabase. Rode esta
+ * função UMA VEZ, manualmente, pelo editor do Apps Script. Ela se recusa
+ * a rodar se o Supabase já tiver equipamentos cadastrados, para evitar
+ * duplicar dados em uma segunda execução acidental.
+ */
+function migrarPlanilhaParaSupabase() {
+  const jaTemDados = supabaseSelect_('flaviense_equipamentos', 'select=id&limit=1');
+  if (jaTemDados.length) {
+    throw new Error('O Supabase já tem equipamentos cadastrados — migração abortada para não duplicar.');
+  }
+
+  const usuarios = sheetToObjectsLegado_(SHEETS_LEGADO.USUARIOS);
+  usuarios.forEach(function (u) {
+    supabaseInsert_('flaviense_usuarios', { nome: u.Nome, usuario: u.Usuario, senha_hash: u.SenhaHash, ativo: u.Ativo === true });
+  });
+
+  const equipamentos = sheetToObjectsLegado_(SHEETS_LEGADO.EQUIPAMENTOS);
+  equipamentos.forEach(function (eq) {
+    supabaseInsert_('flaviense_equipamentos', {
+      id: eq.ID, nome: eq.Nome, descricao: eq.Descricao || null, local: eq.Local || null,
+      data_proxima_intervencao: formatarDataSql_(eq.DataProximaIntervencao),
+      criado_em: toIso_(eq.CriadoEm), atualizado_em: toIso_(eq.AtualizadoEm)
+    });
+  });
+
+  const preventivas = sheetToObjectsLegado_(SHEETS_LEGADO.PREVENTIVAS);
+  preventivas.forEach(function (p) {
+    supabaseInsert_('flaviense_preventivas', { equipamento_id: p.EquipamentoID, descricao: p.Descricao, periodicidade: p.Periodicidade });
+  });
+
+  const monitoramento = sheetToObjectsLegado_(SHEETS_LEGADO.MONITORAMENTO);
+  monitoramento.forEach(function (m) {
+    supabaseInsert_('flaviense_monitoramento', {
+      equipamento_id: m.EquipamentoID, data: formatarDataSql_(m.Data), responsavel: m.Responsavel,
+      horimetro: m.Horimetro || null, observacoes: m.Observacoes || null
+    });
+  });
+
+  const falhas = sheetToObjectsLegado_(SHEETS_LEGADO.FALHAS);
+  falhas.forEach(function (f) {
+    supabaseInsert_('flaviense_falhas', {
+      equipamento_id: f.EquipamentoID, data: formatarDataSql_(f.Data), descricao: f.Descricao,
+      registrado_por: f.RegistradoPor, criado_em: toIso_(f.CriadoEm),
+      parada_producao: f.ParadaProducao === true, equipe: f.EquipeResponsavel || null,
+      empresa_terceirizada: f.EmpresaTerceirizada || null, custo: f.Custo || null
+    });
+  });
+
+  const emails = sheetToObjectsLegado_(SHEETS_LEGADO.ALERTAS);
+  emails.forEach(function (e) {
+    if (!e.Email) return;
+    supabaseInsert_('flaviense_emails_alerta', { email: e.Email });
+  });
+
+  Logger.log(
+    'Migração concluída: %s usuários, %s equipamentos, %s preventivas, %s monitoramentos, %s falhas, %s e-mails.',
+    usuarios.length, equipamentos.length, preventivas.length, monitoramento.length, falhas.length, emails.length
+  );
 }
