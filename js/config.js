@@ -42,12 +42,33 @@
       const badge = u.Ativo ? '<span class="badge badge-ok">Ativo</span>' : '<span class="badge badge-inativo">Inativo</span>';
       const badgePapel = u.Papel === 'admin' ? '<span class="badge badge-atencao">Administrador</span>' : '<span class="badge badge-inativo">Usuário comum</span>';
       const acaoTexto = u.Ativo ? 'Desativar' : 'Reativar';
-      tr.innerHTML = '<td>' + escapeHtml(u.Nome) + '</td><td>' + escapeHtml(u.Usuario) + '</td><td>' + badgePapel + '</td><td>' + badge + '</td>' +
+      const ehEuMesmo = String(u.Usuario).toLowerCase() === String(sessao.usuario).toLowerCase();
+      const botaoPapel = ehEuMesmo ? '' :
+        '<button type="button" class="botao botao-secundario botao-pequeno" data-acao-papel style="margin-left:0.4rem;">' +
+        (u.Papel === 'admin' ? 'Tornar usuário comum' : 'Tornar administrador') + '</button>';
+      tr.innerHTML = '<td>' + escapeHtml(u.Nome) + '</td><td>' + escapeHtml(u.Usuario) + '</td>' +
+        '<td>' + badgePapel + botaoPapel + '</td><td>' + badge + '</td>' +
         '<td><button type="button" class="botao botao-secundario botao-pequeno">' + acaoTexto + '</button></td>';
-      tr.querySelector('button').addEventListener('click', async function () {
+      tr.querySelector('button:not([data-acao-papel])').addEventListener('click', async function () {
         await apiPost('alternarUsuario', { usuario: u.Usuario });
         carregarUsuarios();
       });
+      const botaoPapelEl = tr.querySelector('[data-acao-papel]');
+      if (botaoPapelEl) {
+        botaoPapelEl.addEventListener('click', async function () {
+          const vaiVirarAdmin = u.Papel !== 'admin';
+          const msg = vaiVirarAdmin
+            ? 'Tornar "' + u.Nome + '" administrador? Isso dá acesso total, incluindo excluir equipamentos e registros.'
+            : 'Remover o acesso de administrador de "' + u.Nome + '"?';
+          if (!confirm(msg)) return;
+          const resp = await apiPost('alternarPapel', { usuario: u.Usuario });
+          if (resp.ok) {
+            carregarUsuarios();
+          } else {
+            alert('Erro ao alterar papel: ' + resp.error);
+          }
+        });
+      }
       corpo.appendChild(tr);
     });
   }

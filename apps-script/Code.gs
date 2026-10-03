@@ -28,7 +28,7 @@
  * com sucesso, eles ficariam duplicados.
  */
 
-const VERSAO_CODIGO = 'v5-papeis-admin-2026-10-03';
+const VERSAO_CODIGO = 'v6-alternar-papel-2026-10-03';
 
 // ---------------------------------------------------------------------
 // Supabase - cliente REST (PostgREST)
@@ -355,6 +355,17 @@ function alternarUsuario_(p) {
   return { ok: true };
 }
 
+function alternarPapel_(p, sessao) {
+  if (String(p.usuario).toLowerCase() === String(sessao.Usuario).toLowerCase()) {
+    throw new Error('Você não pode alterar seu próprio papel');
+  }
+  const linhas = supabaseSelect_('flaviense_usuarios', eq_('usuario', p.usuario));
+  if (!linhas.length) throw new Error('Usuário não encontrado');
+  const novoPapel = linhas[0].papel === 'admin' ? 'usuario' : 'admin';
+  supabaseUpdate_('flaviense_usuarios', eq_('usuario', p.usuario), { papel: novoPapel });
+  return { ok: true, papel: novoPapel };
+}
+
 // ---------------------------------------------------------------------
 // Roteador HTTP
 // ---------------------------------------------------------------------
@@ -386,7 +397,8 @@ const ACOES_ADMIN_ = {
   removerAlertaEmail: true,
   listarUsuarios: true,
   adicionarUsuario: true,
-  alternarUsuario: true
+  alternarUsuario: true,
+  alternarPapel: true
 };
 
 function route_(action, p) {
@@ -417,6 +429,7 @@ function route_(action, p) {
     case 'listarUsuarios': return { ok: true, data: listarUsuarios_() };
     case 'adicionarUsuario': return { ok: true, data: adicionarUsuario_(p) };
     case 'alternarUsuario': return { ok: true, data: alternarUsuario_(p) };
+    case 'alternarPapel': return { ok: true, data: alternarPapel_(p, sessao) };
     default: return { ok: false, error: 'acao_desconhecida' };
   }
 }
