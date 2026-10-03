@@ -24,6 +24,7 @@
   const menuRegistro = document.getElementById('menu-modo-registro');
   const menuBranco = document.getElementById('menu-modo-branco');
   const btnImprimirBranco = document.getElementById('btn-imprimir-branco');
+  const blocoIaExtracao = document.getElementById('bloco-ia-extracao');
 
   function renderResultados() {
     const termo = buscaInput.value.trim().toLowerCase();
@@ -98,6 +99,7 @@
       blocoEquipFixo.style.display = 'none';
       blocoEquipSelect.style.display = 'block';
       btnImprimirBranco.style.display = 'inline-flex';
+      blocoIaExtracao.style.display = 'block';
       filtroLocalSelect.value = '';
       popularSelectEquipamentos();
       document.getElementById('falha-data').value = new Date().toISOString().slice(0, 10);
@@ -107,10 +109,15 @@
       blocoEquipFixo.style.display = 'block';
       blocoEquipSelect.style.display = 'none';
       btnImprimirBranco.style.display = 'none';
+      blocoIaExtracao.style.display = 'none';
       buscaInput.value = '';
       filtroLocalBusca.value = '';
       listaResultados.innerHTML = '';
     }
+    const arquivoIa = document.getElementById('arquivo-ia');
+    if (arquivoIa) arquivoIa.value = '';
+    const msgIa = document.getElementById('msg-ia');
+    if (msgIa) msgIa.style.display = 'none';
   }
 
   function imprimirFormularioEmBranco() {
@@ -290,6 +297,89 @@
     }
     return urls;
   }
+
+  // ---------------------------------------------------------------------
+  // Preencher formulário a partir de foto/PDF (IA - Gemini)
+  // ---------------------------------------------------------------------
+
+  function arquivoParaBase64Ia_(arquivo) {
+    if (arquivo.type.indexOf('image/') === 0) {
+      return redimensionarImagem(arquivo, 1600, 0.85).then(function (dataUrl) {
+        return { base64: dataUrl.split(',')[1], tipo: 'image/jpeg' };
+      });
+    }
+    return new Promise(function (resolve, reject) {
+      const leitor = new FileReader();
+      leitor.onload = function (ev) {
+        resolve({ base64: ev.target.result.split(',')[1], tipo: arquivo.type || 'application/pdf' });
+      };
+      leitor.onerror = reject;
+      leitor.readAsDataURL(arquivo);
+    });
+  }
+
+  function aplicarExtracaoIA(dados) {
+    if (dados.data) document.getElementById('falha-data').value = dados.data;
+    if (dados.descricao) document.getElementById('falha-descricao').value = dados.descricao;
+    if (dados.registradoPor) document.getElementById('falha-registrado-por').value = dados.registradoPor;
+    if (typeof dados.paradaProducao === 'boolean') document.getElementById('falha-parada').checked = dados.paradaProducao;
+    if (dados.equipe === 'Terceirizada') {
+      document.getElementById('falha-equipe-terceirizada').checked = true;
+    } else if (dados.equipe === 'Propria') {
+      document.getElementById('falha-equipe-propria').checked = true;
+    }
+    atualizarCampoEmpresa();
+    if (dados.empresaTerceirizada) document.getElementById('falha-empresa').value = dados.empresaTerceirizada;
+    if (dados.custo) document.getElementById('falha-custo').value = String(dados.custo).replace(',', '.').replace(/[^0-9.]/g, '');
+
+    if (dados.equipamentoTexto) {
+      const termo = dados.equipamentoTexto.toLowerCase();
+      const match = todos.find(function (eq) {
+        return eq.ID.toLowerCase() === termo ||
+          eq.Nome.toLowerCase().indexOf(termo) !== -1 ||
+          termo.indexOf(eq.ID.toLowerCase()) !== -1;
+      });
+      if (match) {
+        filtroLocalSelect.value = '';
+        popularSelectEquipamentos();
+        selectEquipamento.value = match.ID;
+        selecionado = match;
+      }
+    }
+  }
+
+  document.getElementById('btn-preencher-ia').addEventListener('click', async function () {
+    const input = document.getElementById('arquivo-ia');
+    const msg = document.getElementById('msg-ia');
+    if (!input.files.length) { alert('Escolha uma foto ou PDF do formulário primeiro.'); return; }
+    const botao = this;
+    botao.disabled = true;
+    const textoOriginal = botao.textContent;
+    botao.textContent = 'Lendo formulário...';
+    msg.style.display = 'none';
+    try {
+      const arquivo = input.files[0];
+      const convertido = await arquivoParaBase64Ia_(arquivo);
+      const resp = await apiPost('extrairFormulario', { base64: convertido.base64, tipo: convertido.tipo });
+      if (resp.ok) {
+        aplicarExtracaoIA(resp.data);
+        msg.className = 'sucesso';
+        msg.textContent = 'Campos preenchidos pela IA — confira tudo antes de registrar a falha.';
+        msg.style.display = 'block';
+      } else {
+        msg.className = 'erro';
+        msg.textContent = 'Erro ao ler o formulário: ' + resp.error;
+        msg.style.display = 'block';
+      }
+    } catch (err) {
+      msg.className = 'erro';
+      msg.textContent = 'Erro ao processar o arquivo.';
+      msg.style.display = 'block';
+    } finally {
+      botao.disabled = false;
+      botao.textContent = textoOriginal;
+    }
+  });
 
   const radiosEquipe = document.getElementsByName('equipe');
   const campoEmpresa = document.getElementById('campo-empresa-terceirizada');

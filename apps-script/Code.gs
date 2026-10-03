@@ -11,10 +11,16 @@
  *
  * ARMAZENAMENTO: os dados agora ficam no Supabase (Postgres), não mais na
  * planilha. Antes de usar, configure em Projeto > Propriedades do script
- * (ícone de engrenagem > Propriedades do script) duas propriedades:
+ * (ícone de engrenagem > Propriedades do script) estas propriedades:
  *   SUPABASE_URL           -> URL do projeto, ex: https://xxxx.supabase.co
  *   SUPABASE_SERVICE_KEY   -> a chave "service_role" (secreta) do projeto
  *                              (Project Settings > API Keys no Supabase)
+ *   GEMINI_API_KEY         -> chave de API do Google AI Studio
+ *                              (aistudio.google.com/apikey), usada para
+ *                              preencher o formulário automaticamente a
+ *                              partir de foto/PDF do papel preenchido à mão
+ *   GEMINI_MODEL           -> opcional; padrão "gemini-2.0-flash" se não
+ *                              configurado
  *
  * MIGRAÇÃO ÚNICA: se a planilha ainda tem os dados antigos (abas
  * Equipamentos, Usuarios, Falhas, etc.), rode manualmente a função
@@ -28,7 +34,7 @@
  * com sucesso, eles ficariam duplicados.
  */
 
-const VERSAO_CODIGO = 'v6-alternar-papel-2026-10-03';
+const VERSAO_CODIGO = 'v7-ia-preenche-formulario-2026-10-03';
 
 // ---------------------------------------------------------------------
 // Supabase - cliente REST (PostgREST)
@@ -318,6 +324,81 @@ function removerPorId_(tabela, id) {
 }
 
 // ---------------------------------------------------------------------
+// Preenchimento automático via IA (Gemini) a partir de foto/PDF do
+// formulário em papel preenchido à mão
+// ---------------------------------------------------------------------
+
+function geminiApiKey_() {
+  const key = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  if (!key) throw new Error('Propriedade GEMINI_API_KEY não configurada (Projeto > Propriedades do script).');
+  return key;
+}
+
+function geminiModel_() {
+  return PropertiesService.getScriptProperties().getProperty('GEMINI_MODEL') || 'gemini-2.0-flash';
+}
+
+function extrairFormulario_(p) {
+  if (!p.base64) throw new Error('Nenhum arquivo enviado');
+  const tipo = p.tipo || 'image/jpeg';
+
+  const prompt = 'Você está lendo um formulário de papel, preenchido à mão, de registro de falha/intervenção ' +
+    'de manutenção industrial (em português do Brasil). Extraia os dados exatamente como estão escritos, ' +
+    'preenchendo o schema JSON fornecido. Se um campo estiver ilegível, em branco, ou você não tiver certeza, ' +
+    'deixe-o como string vazia "" — nunca invente ou adivinhe um valor. ' +
+    'Para "data", converta para o formato AAAA-MM-DD (o formulário usa DD/MM/AAAA); se não der pra ler, deixe "". ' +
+    'Para "equipe", responda exatamente "Propria" ou "Terceirizada" conforme a caixa marcada, ou "" se nenhuma ' +
+    'estiver marcada. Para "paradaProducao", responda true se a caixa "Sim" estiver marcada, false se "Não" ' +
+    'estiver marcada, ou deixe null se nenhuma estiver marcada. Para "custo", retorne só os números (ex: "150.00"), sem "R$".';
+
+  const body = {
+    contents: [{
+      parts: [
+        { text: prompt },
+        { inline_data: { mime_type: tipo, data: p.base64 } }
+      ]
+    }],
+    generationConfig: {
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: 'OBJECT',
+        properties: {
+          equipamentoTexto: { type: 'STRING' },
+          local: { type: 'STRING' },
+          data: { type: 'STRING' },
+          descricao: { type: 'STRING' },
+          paradaProducao: { type: 'BOOLEAN' },
+          equipe: { type: 'STRING' },
+          empresaTerceirizada: { type: 'STRING' },
+          custo: { type: 'STRING' },
+          registradoPor: { type: 'STRING' }
+        }
+      }
+    }
+  };
+
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + geminiModel_() + ':generateContent?key=' + geminiApiKey_();
+  const resp = UrlFetchApp.fetch(url, {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify(body),
+    muteHttpExceptions: true
+  });
+  const code = resp.getResponseCode();
+  const texto = resp.getContentText();
+  if (code >= 400) {
+    throw new Error('Falha ao consultar a IA (' + code + '): ' + texto);
+  }
+  const json = JSON.parse(texto);
+  const candidato = json.candidates && json.candidates[0];
+  const partes = candidato && candidato.content && candidato.content.parts;
+  if (!partes || !partes.length) {
+    throw new Error('A IA não retornou resultado. Tente uma foto mais nítida ou com melhor iluminação.');
+  }
+  return JSON.parse(partes[0].text);
+}
+
+// ---------------------------------------------------------------------
 // E-mails de alerta
 // ---------------------------------------------------------------------
 
@@ -423,6 +504,7 @@ function route_(action, p) {
     case 'removerMonitoramento': return { ok: true, data: removerPorId_('flaviense_monitoramento', p.row) };
     case 'adicionarFalha': return { ok: true, data: adicionarFalha_(p) };
     case 'uploadFoto': return { ok: true, data: uploadFoto_(p) };
+    case 'extrairFormulario': return { ok: true, data: extrairFormulario_(p) };
     case 'listarAlertaEmails': return { ok: true, data: listarAlertaEmails_() };
     case 'adicionarAlertaEmail': return { ok: true, data: adicionarAlertaEmail_(p) };
     case 'removerAlertaEmail': return { ok: true, data: removerPorId_('flaviense_emails_alerta', p.row) };
