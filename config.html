@@ -47,7 +47,12 @@
       <div class="grid-3">
         <div class="campo"><label>Nome</label><input type="text" id="novo-nome" required></div>
         <div class="campo"><label>Usuário (login)</label><input type="text" id="novo-usuario" required></div>
-        <div class="campo"><label>Senha</label><input type="password" id="nova-senha" required></div>
+        <div class="campo"><label>Senha</label>
+          <div class="campo-senha">
+            <input type="password" id="nova-senha" required>
+            <button type="button" class="botao-ver-senha" tabindex="-1" data-alvo="nova-senha" aria-label="Mostrar senha">👁</button>
+          </div>
+        </div>
       </div>
       <div class="campo" style="max-width:260px;">
         <label>Papel</label>

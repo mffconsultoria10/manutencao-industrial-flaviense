@@ -4,6 +4,15 @@
   if (!exigirAdmin(sessao)) return;
   document.getElementById('nome-usuario').textContent = 'Olá, ' + sessao.nome;
 
+  document.querySelectorAll('.botao-ver-senha[data-alvo]').forEach(function (btn) {
+    const input = document.getElementById(btn.getAttribute('data-alvo'));
+    btn.addEventListener('click', function () {
+      const mostrando = input.type === 'text';
+      input.type = mostrando ? 'password' : 'text';
+      btn.textContent = mostrando ? '👁' : '🙈';
+    });
+  });
+
   async function carregarEmails() {
     const resp = await apiGet('listarAlertaEmails');
     const corpo = document.getElementById('corpo-emails');
@@ -48,8 +57,11 @@
         (u.Papel === 'admin' ? 'Tornar usuário comum' : 'Tornar administrador') + '</button>';
       tr.innerHTML = '<td>' + escapeHtml(u.Nome) + '</td><td>' + escapeHtml(u.Usuario) + '</td>' +
         '<td>' + badgePapel + botaoPapel + '</td><td>' + badge + '</td>' +
-        '<td><button type="button" class="botao botao-secundario botao-pequeno">' + acaoTexto + '</button></td>';
-      tr.querySelector('button:not([data-acao-papel])').addEventListener('click', async function () {
+        '<td style="display:flex; gap:0.4rem; flex-wrap:wrap;">' +
+          '<button type="button" class="botao botao-secundario botao-pequeno" data-acao-toggle>' + acaoTexto + '</button>' +
+          '<button type="button" class="botao botao-secundario botao-pequeno" data-acao-redefinir>Redefinir senha</button>' +
+        '</td>';
+      tr.querySelector('[data-acao-toggle]').addEventListener('click', async function () {
         await apiPost('alternarUsuario', { usuario: u.Usuario });
         carregarUsuarios();
       });
@@ -69,6 +81,52 @@
           }
         });
       }
+
+      const celulaAcoes = tr.querySelector('td:last-child');
+      celulaAcoes.querySelector('[data-acao-redefinir]').addEventListener('click', function () {
+        celulaAcoes.innerHTML =
+          '<div style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap;">' +
+            '<div class="campo-senha" style="width:150px;">' +
+              '<input type="password" class="input-redefinir-senha" placeholder="Nova senha">' +
+              '<button type="button" class="botao-ver-senha" tabindex="-1">👁</button>' +
+            '</div>' +
+            '<button type="button" class="botao botao-primario botao-pequeno" data-salvar-senha>Salvar</button>' +
+            '<button type="button" class="botao botao-secundario botao-pequeno" data-cancelar-senha>Cancelar</button>' +
+          '</div>' +
+          '<div class="erro" style="display:none; margin-top:0.3rem;" data-msg-senha></div>';
+
+        const inputSenha = celulaAcoes.querySelector('.input-redefinir-senha');
+        const btnOlho = celulaAcoes.querySelector('.botao-ver-senha');
+        btnOlho.addEventListener('click', function () {
+          const mostrando = inputSenha.type === 'text';
+          inputSenha.type = mostrando ? 'password' : 'text';
+          btnOlho.textContent = mostrando ? '👁' : '🙈';
+        });
+        inputSenha.focus();
+
+        celulaAcoes.querySelector('[data-cancelar-senha]').addEventListener('click', carregarUsuarios);
+
+        celulaAcoes.querySelector('[data-salvar-senha]').addEventListener('click', async function () {
+          const novaSenha = inputSenha.value;
+          const msgEl = celulaAcoes.querySelector('[data-msg-senha]');
+          if (!novaSenha || novaSenha.length < 4) {
+            msgEl.textContent = 'Digite uma senha com pelo menos 4 caracteres.';
+            msgEl.style.display = 'block';
+            return;
+          }
+          if (!confirm('Redefinir a senha de "' + u.Nome + '"?')) return;
+          const hash = await sha256Hex(novaSenha);
+          const resp = await apiPost('redefinirSenha', { usuario: u.Usuario, senhaHash: hash });
+          if (resp.ok) {
+            alert('Senha de "' + u.Nome + '" redefinida com sucesso.');
+            carregarUsuarios();
+          } else {
+            msgEl.textContent = 'Erro: ' + resp.error;
+            msgEl.style.display = 'block';
+          }
+        });
+      });
+
       corpo.appendChild(tr);
     });
   }

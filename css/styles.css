@@ -159,7 +159,20 @@ a { color: var(--azul); }
 }
 
 .campo-senha { position: relative; }
-.campo-senha input { padding-right: 2.4rem; }
+.campo-senha input {
+  width: 100%;
+  padding: 0.55rem 2.4rem 0.55rem 0.65rem;
+  border: 1px solid var(--cinza-borda);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  background: var(--branco);
+}
+.campo-senha input:focus {
+  outline: none;
+  border-color: var(--ambar);
+  box-shadow: 0 0 0 3px rgba(232, 163, 61, 0.2);
+}
 .campo-senha .botao-ver-senha {
   position: absolute;
   right: 0.4rem;

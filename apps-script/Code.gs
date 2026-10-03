@@ -34,7 +34,7 @@
  * com sucesso, eles ficariam duplicados.
  */
 
-const VERSAO_CODIGO = 'v7-ia-preenche-formulario-2026-10-03';
+const VERSAO_CODIGO = 'v8-redefinir-senha-2026-10-03';
 
 // ---------------------------------------------------------------------
 // Supabase - cliente REST (PostgREST)
@@ -447,6 +447,14 @@ function alternarPapel_(p, sessao) {
   return { ok: true, papel: novoPapel };
 }
 
+function redefinirSenha_(p) {
+  if (!p.senhaHash) throw new Error('Nova senha não informada');
+  const linhas = supabaseSelect_('flaviense_usuarios', eq_('usuario', p.usuario));
+  if (!linhas.length) throw new Error('Usuário não encontrado');
+  supabaseUpdate_('flaviense_usuarios', eq_('usuario', p.usuario), { senha_hash: p.senhaHash });
+  return { ok: true };
+}
+
 // ---------------------------------------------------------------------
 // Roteador HTTP
 // ---------------------------------------------------------------------
@@ -479,7 +487,8 @@ const ACOES_ADMIN_ = {
   listarUsuarios: true,
   adicionarUsuario: true,
   alternarUsuario: true,
-  alternarPapel: true
+  alternarPapel: true,
+  redefinirSenha: true
 };
 
 function route_(action, p) {
@@ -512,6 +521,7 @@ function route_(action, p) {
     case 'adicionarUsuario': return { ok: true, data: adicionarUsuario_(p) };
     case 'alternarUsuario': return { ok: true, data: alternarUsuario_(p) };
     case 'alternarPapel': return { ok: true, data: alternarPapel_(p, sessao) };
+    case 'redefinirSenha': return { ok: true, data: redefinirSenha_(p) };
     default: return { ok: false, error: 'acao_desconhecida' };
   }
 }
