@@ -14,6 +14,7 @@
   const elDataProxima = document.getElementById('data-proxima');
   const elTitulo = document.getElementById('titulo-pagina');
   const btnImprimir = document.getElementById('btn-imprimir');
+  const btnExcluirEquipamento = document.getElementById('btn-excluir-equipamento');
 
   function paraInputDate(iso) {
     if (!iso) return '';
@@ -45,6 +46,7 @@
     document.getElementById('bloco-falhas').style.display = 'block';
     document.getElementById('link-nova-falha').href = 'falhas.html?id=' + encodeURIComponent(eq.ID);
     btnImprimir.style.display = 'inline-flex';
+    if (ehAdmin(sessao)) btnExcluirEquipamento.style.display = 'inline-flex';
 
     renderPreventivas(resp.data.preventivas);
     renderMonitoramento(resp.data.monitoramento);
@@ -60,13 +62,17 @@
     vazio.style.display = 'none';
     lista.forEach(function (p) {
       const tr = document.createElement('tr');
+      const botaoRemover = ehAdmin(sessao) ? '<button type="button" class="botao botao-perigo botao-pequeno" data-row="' + p._row + '">Remover</button>' : '';
       tr.innerHTML = '<td>' + escapeHtml(p.Descricao) + '</td><td>' + escapeHtml(p.Periodicidade) + '</td>' +
-        '<td><button type="button" class="botao botao-perigo botao-pequeno" data-row="' + p._row + '">Remover</button></td>';
-      tr.querySelector('button').addEventListener('click', async function () {
-        if (!confirm('Remover esta preventiva?')) return;
-        await apiPost('removerPreventiva', { row: p._row });
-        carregarEquipamento();
-      });
+        '<td>' + botaoRemover + '</td>';
+      const botao = tr.querySelector('button');
+      if (botao) {
+        botao.addEventListener('click', async function () {
+          if (!confirm('Remover esta preventiva?')) return;
+          await apiPost('removerPreventiva', { row: p._row });
+          carregarEquipamento();
+        });
+      }
       corpo.appendChild(tr);
     });
   }
@@ -79,14 +85,18 @@
     vazio.style.display = 'none';
     lista.slice().sort(function (a, b) { return new Date(b.Data) - new Date(a.Data); }).forEach(function (m) {
       const tr = document.createElement('tr');
+      const botaoRemover = ehAdmin(sessao) ? '<button type="button" class="botao botao-perigo botao-pequeno" data-row="' + m._row + '">Remover</button>' : '';
       tr.innerHTML = '<td>' + formatarData(m.Data) + '</td><td>' + escapeHtml(m.Responsavel) + '</td>' +
         '<td>' + escapeHtml(m.Horimetro) + '</td><td>' + escapeHtml(m.Observacoes) + '</td>' +
-        '<td><button type="button" class="botao botao-perigo botao-pequeno" data-row="' + m._row + '">Remover</button></td>';
-      tr.querySelector('button').addEventListener('click', async function () {
-        if (!confirm('Remover este registro de monitoramento?')) return;
-        await apiPost('removerMonitoramento', { row: m._row });
-        carregarEquipamento();
-      });
+        '<td>' + botaoRemover + '</td>';
+      const botao = tr.querySelector('button');
+      if (botao) {
+        botao.addEventListener('click', async function () {
+          if (!confirm('Remover este registro de monitoramento?')) return;
+          await apiPost('removerMonitoramento', { row: m._row });
+          carregarEquipamento();
+        });
+      }
       corpo.appendChild(tr);
     });
   }
@@ -228,6 +238,18 @@
   btnImprimir.addEventListener('click', function () {
     renderFicha();
     window.print();
+  });
+
+  btnExcluirEquipamento.addEventListener('click', async function () {
+    if (!equipamentoId) return;
+    const nomeAtual = elNome.value || equipamentoId;
+    if (!confirm('Excluir o equipamento "' + nomeAtual + '" (' + equipamentoId + ')? Isso também apaga todas as preventivas, monitoramentos e falhas registradas nele. Esta ação não pode ser desfeita.')) return;
+    const resp = await apiPost('removerEquipamento', { id: equipamentoId });
+    if (resp.ok) {
+      window.location.href = 'equipamentos.html';
+    } else {
+      alert('Erro ao excluir equipamento: ' + resp.error);
+    }
   });
 
   carregarEquipamento();

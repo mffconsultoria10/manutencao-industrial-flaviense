@@ -16,7 +16,22 @@ function exigirLogin() {
     window.location.href = 'index.html';
     return null;
   }
+  const navConfig = document.getElementById('nav-config');
+  if (navConfig && s.papel !== 'admin') navConfig.style.display = 'none';
   return s;
+}
+
+function ehAdmin(sessao) {
+  return !!sessao && sessao.papel === 'admin';
+}
+
+function exigirAdmin(sessao) {
+  if (!ehAdmin(sessao)) {
+    alert('Esta área é restrita a administradores.');
+    window.location.href = 'equipamentos.html';
+    return false;
+  }
+  return true;
 }
 
 function sair() {

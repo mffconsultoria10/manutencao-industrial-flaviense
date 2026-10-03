@@ -12,7 +12,7 @@
   <nav>
     <a href="equipamentos.html">Equipamentos</a>
     <a href="falhas.html">Registrar Falha</a>
-    <a href="config.html">Configurações</a>
+    <a href="config.html" id="nav-config">Configurações</a>
     <span class="usuario" id="nome-usuario"></span>
     <button class="sair" onclick="sair()">Sair</button>
   </nav>
@@ -39,7 +39,7 @@
     <h2>Usuários com acesso ao sistema</h2>
     <div class="tabela-scroll">
       <table>
-        <thead><tr><th>Nome</th><th>Usuário</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Nome</th><th>Usuário</th><th>Papel</th><th>Status</th><th></th></tr></thead>
         <tbody id="corpo-usuarios"></tbody>
       </table>
     </div>
@@ -48,6 +48,13 @@
         <div class="campo"><label>Nome</label><input type="text" id="novo-nome" required></div>
         <div class="campo"><label>Usuário (login)</label><input type="text" id="novo-usuario" required></div>
         <div class="campo"><label>Senha</label><input type="password" id="nova-senha" required></div>
+      </div>
+      <div class="campo" style="max-width:260px;">
+        <label>Papel</label>
+        <select id="novo-papel">
+          <option value="usuario">Usuário comum (não pode excluir)</option>
+          <option value="admin">Administrador (acesso total)</option>
+        </select>
       </div>
       <button type="submit" class="botao botao-secundario">+ Adicionar usuário</button>
       <div id="msg-usuario" class="erro" style="display:none;"></div>

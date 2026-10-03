@@ -23,7 +23,7 @@
       const senhaHash = await sha256Hex(senha);
       const resp = await apiPost('login', { usuario: usuario, senhaHash: senhaHash });
       if (resp.ok) {
-        salvarSessao({ token: resp.token, nome: resp.nome, usuario: resp.usuario });
+        salvarSessao({ token: resp.token, nome: resp.nome, usuario: resp.usuario, papel: resp.papel });
         window.location.href = 'equipamentos.html';
       } else {
         msgErro.textContent = resp.error === 'credenciais_invalidas'

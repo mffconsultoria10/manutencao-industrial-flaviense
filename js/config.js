@@ -1,6 +1,7 @@
 (function () {
   const sessao = exigirLogin();
   if (!sessao) return;
+  if (!exigirAdmin(sessao)) return;
   document.getElementById('nome-usuario').textContent = 'Olá, ' + sessao.nome;
 
   async function carregarEmails() {
@@ -39,8 +40,9 @@
     resp.data.forEach(function (u) {
       const tr = document.createElement('tr');
       const badge = u.Ativo ? '<span class="badge badge-ok">Ativo</span>' : '<span class="badge badge-inativo">Inativo</span>';
+      const badgePapel = u.Papel === 'admin' ? '<span class="badge badge-atencao">Administrador</span>' : '<span class="badge badge-inativo">Usuário comum</span>';
       const acaoTexto = u.Ativo ? 'Desativar' : 'Reativar';
-      tr.innerHTML = '<td>' + escapeHtml(u.Nome) + '</td><td>' + escapeHtml(u.Usuario) + '</td><td>' + badge + '</td>' +
+      tr.innerHTML = '<td>' + escapeHtml(u.Nome) + '</td><td>' + escapeHtml(u.Usuario) + '</td><td>' + badgePapel + '</td><td>' + badge + '</td>' +
         '<td><button type="button" class="botao botao-secundario botao-pequeno">' + acaoTexto + '</button></td>';
       tr.querySelector('button').addEventListener('click', async function () {
         await apiPost('alternarUsuario', { usuario: u.Usuario });
@@ -57,8 +59,9 @@
     const nome = document.getElementById('novo-nome').value.trim();
     const usuario = document.getElementById('novo-usuario').value.trim();
     const senha = document.getElementById('nova-senha').value;
+    const papel = document.getElementById('novo-papel').value;
     const senhaHash = await sha256Hex(senha);
-    const resp = await apiPost('adicionarUsuario', { nome: nome, usuario: usuario, senhaHash: senhaHash });
+    const resp = await apiPost('adicionarUsuario', { nome: nome, usuario: usuario, senhaHash: senhaHash, papel: papel });
     if (resp.ok) {
       document.getElementById('form-usuario').reset();
       carregarUsuarios();

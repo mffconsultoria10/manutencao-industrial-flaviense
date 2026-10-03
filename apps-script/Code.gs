@@ -28,7 +28,7 @@
  * com sucesso, eles ficariam duplicados.
  */
 
-const VERSAO_CODIGO = 'v4-fotos-falhas-2026-10-03';
+const VERSAO_CODIGO = 'v5-papeis-admin-2026-10-03';
 
 // ---------------------------------------------------------------------
 // Supabase - cliente REST (PostgREST)
@@ -145,7 +145,7 @@ function mapFalha_(r) {
 }
 
 function mapUsuario_(r) {
-  return { _row: r.id, Nome: r.nome, Usuario: r.usuario, Ativo: r.ativo, CriadoEm: r.criado_em };
+  return { _row: r.id, Nome: r.nome, Usuario: r.usuario, Ativo: r.ativo, Papel: r.papel || 'usuario', CriadoEm: r.criado_em };
 }
 
 function mapEmail_(r) {
@@ -156,10 +156,10 @@ function mapEmail_(r) {
 // Sessão / autenticação
 // ---------------------------------------------------------------------
 
-function criarSessao_(usuario, nome) {
+function criarSessao_(usuario, nome, papel) {
   const token = Utilities.getUuid();
   const expira = new Date(Date.now() + 8 * 60 * 60 * 1000);
-  supabaseInsert_('flaviense_sessoes', { token: token, usuario: usuario, nome: nome, expira_em: expira.toISOString() });
+  supabaseInsert_('flaviense_sessoes', { token: token, usuario: usuario, nome: nome, papel: papel, expira_em: expira.toISOString() });
   return token;
 }
 
@@ -169,7 +169,7 @@ function validarSessao_(token) {
   if (!linhas.length) return null;
   const sessao = linhas[0];
   if (new Date(sessao.expira_em) > new Date()) {
-    return { Usuario: sessao.usuario, Nome: sessao.nome };
+    return { Usuario: sessao.usuario, Nome: sessao.nome, Papel: sessao.papel || 'usuario' };
   }
   return null;
 }
@@ -182,8 +182,9 @@ function acaoLogin_(p) {
   if (!found || found.senha_hash !== p.senhaHash) {
     return { ok: false, error: 'credenciais_invalidas' };
   }
-  const token = criarSessao_(found.usuario, found.nome);
-  return { ok: true, token: token, nome: found.nome, usuario: found.usuario };
+  const papel = found.papel || 'usuario';
+  const token = criarSessao_(found.usuario, found.nome, papel);
+  return { ok: true, token: token, nome: found.nome, usuario: found.usuario, papel: papel };
 }
 
 // ---------------------------------------------------------------------
@@ -234,6 +235,12 @@ function salvarEquipamento_(p) {
     criado_em: new Date().toISOString(), atualizado_em: new Date().toISOString()
   });
   return { id: novoId };
+}
+
+function removerEquipamento_(id) {
+  if (!id) throw new Error('ID do equipamento não informado');
+  supabaseDelete_('flaviense_equipamentos', eq_('id', id));
+  return { removido: true };
 }
 
 // ---------------------------------------------------------------------
@@ -336,7 +343,8 @@ function adicionarUsuario_(p) {
   if (existentes.some(function (u) { return String(u.Usuario).toLowerCase() === String(p.usuario).toLowerCase(); })) {
     throw new Error('Usuário já existe');
   }
-  supabaseInsert_('flaviense_usuarios', { nome: p.nome, usuario: p.usuario, senha_hash: p.senhaHash, ativo: true });
+  const papel = p.papel === 'admin' ? 'admin' : 'usuario';
+  supabaseInsert_('flaviense_usuarios', { nome: p.nome, usuario: p.usuario, senha_hash: p.senhaHash, ativo: true, papel: papel });
   return { ok: true };
 }
 
@@ -366,6 +374,21 @@ function handle_(e) {
   return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
 }
 
+// Ações que só um usuário com papel "admin" pode executar: excluir
+// equipamentos/registros e tudo relacionado a gerenciar usuários e
+// e-mails de alerta (página Configurações).
+const ACOES_ADMIN_ = {
+  removerEquipamento: true,
+  removerPreventiva: true,
+  removerMonitoramento: true,
+  listarAlertaEmails: true,
+  adicionarAlertaEmail: true,
+  removerAlertaEmail: true,
+  listarUsuarios: true,
+  adicionarUsuario: true,
+  alternarUsuario: true
+};
+
 function route_(action, p) {
   if (action === 'versao') return { ok: true, versao: VERSAO_CODIGO };
   if (action === 'login') return acaoLogin_(p);
@@ -373,10 +396,15 @@ function route_(action, p) {
   const sessao = validarSessao_(p.token);
   if (!sessao) return { ok: false, error: 'sessao_invalida' };
 
+  if (ACOES_ADMIN_[action] && sessao.Papel !== 'admin') {
+    return { ok: false, error: 'acesso_negado' };
+  }
+
   switch (action) {
     case 'listarEquipamentos': return { ok: true, data: listarEquipamentos_() };
     case 'obterEquipamento': return { ok: true, data: obterEquipamentoCompleto_(p.id) };
     case 'salvarEquipamento': return { ok: true, data: salvarEquipamento_(p) };
+    case 'removerEquipamento': return { ok: true, data: removerEquipamento_(p.id) };
     case 'adicionarPreventiva': return { ok: true, data: adicionarPreventiva_(p) };
     case 'removerPreventiva': return { ok: true, data: removerPorId_('flaviense_preventivas', p.row) };
     case 'adicionarMonitoramento': return { ok: true, data: adicionarMonitoramento_(p) };
