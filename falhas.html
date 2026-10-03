@@ -18,7 +18,13 @@
   </nav>
 </div>
 
-<div class="container">
+<div class="layout-lateral">
+  <nav class="menu-lateral no-print">
+    <button type="button" class="item-menu-lateral ativo" id="menu-modo-registro" data-modo="registro">Registro de falha / intervenção</button>
+    <button type="button" class="item-menu-lateral" id="menu-modo-branco" data-modo="branco">Formulário em Branco</button>
+  </nav>
+
+  <div class="container">
   <div class="cartao">
     <h2>Registrar falha / intervenção corretiva</h2>
 
@@ -34,9 +40,13 @@
     </div>
 
     <div id="etapa-formulario" style="display:none;">
-      <div class="cartao" style="background:#f8fafc;">
+      <div class="cartao" style="background:#f8fafc;" id="bloco-equip-fixo">
         <strong id="equipamento-selecionado"></strong>
         <button type="button" class="botao botao-secundario botao-pequeno" id="btn-trocar" style="margin-left:0.8rem;">Trocar equipamento</button>
+      </div>
+      <div class="campo" id="bloco-equip-select" style="display:none;">
+        <label for="falha-equipamento-select">Equipamento</label>
+        <select id="falha-equipamento-select" required><option value="">Selecione um equipamento...</option></select>
       </div>
       <form id="form-falha">
         <div class="grid-2">
@@ -90,6 +100,7 @@
         <span id="msg-ok" class="sucesso" style="display:none;">Falha registrada com sucesso.</span>
       </form>
     </div>
+  </div>
   </div>
 </div>
 

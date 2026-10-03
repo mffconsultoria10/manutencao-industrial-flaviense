@@ -213,6 +213,47 @@ tbody tr:hover { background: #f8fafc; }
 .form-inline { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-end; }
 .form-inline .campo { flex: 1; min-width: 160px; margin-bottom: 0; }
 
+.layout-lateral {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+.layout-lateral .container { padding: 0; margin: 0; max-width: none; flex: 1; min-width: 0; }
+
+.menu-lateral {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 220px;
+  flex-shrink: 0;
+  background: var(--branco);
+  border: 1px solid var(--cinza-borda);
+  border-radius: var(--raio);
+  box-shadow: var(--sombra);
+  padding: 0.75rem;
+}
+.menu-lateral .item-menu-lateral {
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--texto);
+  cursor: pointer;
+}
+.menu-lateral .item-menu-lateral:hover { background: var(--cinza-bg); }
+.menu-lateral .item-menu-lateral.ativo { background: var(--azul-escuro); color: var(--branco); }
+
+@media (max-width: 760px) {
+  .layout-lateral { flex-direction: column; }
+  .menu-lateral { flex-direction: row; flex-wrap: wrap; min-width: 0; width: 100%; }
+}
+
 .tela-login {
   min-height: 100vh;
   display: flex;

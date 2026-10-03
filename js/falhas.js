@@ -6,6 +6,7 @@
 
   let todos = [];
   let selecionado = null;
+  let modo = 'registro';
 
   const params = new URLSearchParams(window.location.search);
   const idPreSelecionado = params.get('id');
@@ -14,6 +15,11 @@
   const listaResultados = document.getElementById('lista-resultados');
   const etapaBusca = document.getElementById('etapa-busca');
   const etapaForm = document.getElementById('etapa-formulario');
+  const blocoEquipFixo = document.getElementById('bloco-equip-fixo');
+  const blocoEquipSelect = document.getElementById('bloco-equip-select');
+  const selectEquipamento = document.getElementById('falha-equipamento-select');
+  const menuRegistro = document.getElementById('menu-modo-registro');
+  const menuBranco = document.getElementById('menu-modo-branco');
 
   function renderResultados(termo) {
     if (!termo) { listaResultados.innerHTML = ''; return; }
@@ -46,6 +52,46 @@
     etapaForm.style.display = 'block';
     document.getElementById('falha-data').value = new Date().toISOString().slice(0, 10);
   }
+
+  function popularSelectEquipamentos() {
+    selectEquipamento.innerHTML = '<option value="">Selecione um equipamento...</option>' +
+      todos.map(function (eq) {
+        return '<option value="' + escapeHtml(eq.ID) + '">' + escapeHtml(eq.Nome) + ' (' + escapeHtml(eq.ID) + ')</option>';
+      }).join('');
+  }
+
+  function irParaModo(novoModo) {
+    modo = novoModo;
+    menuRegistro.classList.toggle('ativo', modo === 'registro');
+    menuBranco.classList.toggle('ativo', modo === 'branco');
+    selecionado = null;
+    document.getElementById('form-falha').reset();
+    document.getElementById('falha-registrado-por').value = sessao.nome;
+    atualizarCampoEmpresa();
+
+    if (modo === 'branco') {
+      etapaBusca.style.display = 'none';
+      etapaForm.style.display = 'block';
+      blocoEquipFixo.style.display = 'none';
+      blocoEquipSelect.style.display = 'block';
+      selectEquipamento.value = '';
+      document.getElementById('falha-data').value = new Date().toISOString().slice(0, 10);
+    } else {
+      etapaForm.style.display = 'none';
+      etapaBusca.style.display = 'block';
+      blocoEquipFixo.style.display = 'block';
+      blocoEquipSelect.style.display = 'none';
+      buscaInput.value = '';
+      listaResultados.innerHTML = '';
+    }
+  }
+
+  menuRegistro.addEventListener('click', function () { irParaModo('registro'); });
+  menuBranco.addEventListener('click', function () { irParaModo('branco'); });
+
+  selectEquipamento.addEventListener('change', function (ev) {
+    selecionado = todos.find(function (x) { return x.ID === ev.target.value; }) || null;
+  });
 
   const radiosEquipe = document.getElementsByName('equipe');
   const campoEmpresa = document.getElementById('campo-empresa-terceirizada');
@@ -104,6 +150,7 @@
     const resp = await apiGet('listarEquipamentos');
     if (resp.ok) {
       todos = resp.data;
+      popularSelectEquipamentos();
       if (idPreSelecionado) {
         const eq = todos.find(function (x) { return x.ID === idPreSelecionado; });
         if (eq) selecionar(eq);
