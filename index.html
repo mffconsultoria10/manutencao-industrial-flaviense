@@ -22,7 +22,10 @@
       </div>
       <div class="campo">
         <label for="senha">Senha</label>
-        <input type="password" id="senha" autocomplete="current-password" required>
+        <div class="campo-senha">
+          <input type="password" id="senha" autocomplete="current-password" required>
+          <button type="button" id="btn-ver-senha" class="botao-ver-senha" tabindex="-1" aria-label="Mostrar senha">👁</button>
+        </div>
       </div>
       <button type="submit" class="botao-primario" style="width:100%; justify-content:center;">Entrar</button>
       <div id="msg-erro" class="erro" style="display:none;"></div>

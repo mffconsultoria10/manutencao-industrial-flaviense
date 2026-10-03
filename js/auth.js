@@ -8,6 +8,15 @@
   const form = document.getElementById('form-login');
   const msgErro = document.getElementById('msg-erro');
 
+  const campoSenha = document.getElementById('senha');
+  const btnVerSenha = document.getElementById('btn-ver-senha');
+  btnVerSenha.addEventListener('click', function () {
+    const mostrando = campoSenha.type === 'text';
+    campoSenha.type = mostrando ? 'password' : 'text';
+    btnVerSenha.textContent = mostrando ? '👁' : '🙈';
+    btnVerSenha.setAttribute('aria-label', mostrando ? 'Mostrar senha' : 'Ocultar senha');
+  });
+
   form.addEventListener('submit', async function (ev) {
     ev.preventDefault();
     msgErro.style.display = 'none';
