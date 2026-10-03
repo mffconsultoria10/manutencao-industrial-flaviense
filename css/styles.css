@@ -45,6 +45,17 @@ a { color: var(--azul); }
   letter-spacing: 0.02em;
 }
 
+.topbar .marca .logo-marca {
+  display: inline-block;
+  width: 150px;
+  height: 30px;
+  background-image: url("../img/logo.webp");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: left center;
+  flex-shrink: 0;
+}
+
 .topbar .marca .pastilha {
   background: var(--ambar);
   color: var(--azul-escuro);
@@ -202,6 +213,22 @@ tbody tr:hover { background: #f8fafc; }
   justify-content: center;
   background: linear-gradient(135deg, var(--azul-escuro), var(--azul));
   padding: 1rem;
+}
+.tela-login .login-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 380px;
+}
+.tela-login .logo-login {
+  width: 220px;
+  height: 90px;
+  margin-bottom: 1.2rem;
+  background-image: url("../img/logo.webp");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
 }
 .tela-login .cartao { width: 100%; max-width: 380px; margin-bottom: 0; }
 .tela-login .titulo {
