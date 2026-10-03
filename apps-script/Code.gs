@@ -34,7 +34,7 @@
  * com sucesso, eles ficariam duplicados.
  */
 
-const VERSAO_CODIGO = 'v9-gemini-3-8-flash-2026-10-03';
+const VERSAO_CODIGO = 'v10-retry-ia-sobrecarga-2026-10-03';
 
 // ---------------------------------------------------------------------
 // Supabase - cliente REST (PostgREST)
@@ -378,15 +378,27 @@ function extrairFormulario_(p) {
   };
 
   const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + geminiModel_() + ':generateContent?key=' + geminiApiKey_();
-  const resp = UrlFetchApp.fetch(url, {
+  const params = {
     method: 'post',
     contentType: 'application/json',
     payload: JSON.stringify(body),
     muteHttpExceptions: true
-  });
-  const code = resp.getResponseCode();
-  const texto = resp.getContentText();
+  };
+
+  const tentativasMax = 3;
+  let code, texto;
+  for (let tentativa = 1; tentativa <= tentativasMax; tentativa++) {
+    const resp = UrlFetchApp.fetch(url, params);
+    code = resp.getResponseCode();
+    texto = resp.getContentText();
+    const transitorio = code === 503 || code === 429;
+    if (!transitorio || tentativa === tentativasMax) break;
+    Utilities.sleep(1500 * tentativa);
+  }
   if (code >= 400) {
+    if (code === 503 || code === 429) {
+      throw new Error('O serviço de IA está sobrecarregado no momento. Aguarde alguns instantes e tente novamente.');
+    }
     throw new Error('Falha ao consultar a IA (' + code + '): ' + texto);
   }
   const json = JSON.parse(texto);
