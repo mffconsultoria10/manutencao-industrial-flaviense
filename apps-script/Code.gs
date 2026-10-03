@@ -17,11 +17,15 @@
  *                              (Project Settings > API Keys no Supabase)
  *
  * MIGRAÇÃO ÚNICA: se a planilha ainda tem os dados antigos (abas
- * Equipamentos, Usuarios, Falhas, etc.) e o Supabase está vazio, rode UMA
- * VEZ manualmente a função "migrarPlanilhaParaSupabase" pelo editor do
- * Apps Script (selecione a função no menu suspenso e clique em Executar).
- * Ela copia tudo da planilha para o Supabase e se recusa a rodar de novo
- * se já houver equipamentos lá, para não duplicar.
+ * Equipamentos, Usuarios, Falhas, etc.), rode manualmente a função
+ * "migrarPlanilhaParaSupabase" pelo editor do Apps Script (selecione a
+ * função no menu suspenso e clique em Executar). Ela copia tudo da
+ * planilha para o Supabase; usuários, equipamentos e e-mails usam
+ * "upsert" (substitui se já existir), então é seguro rodar de novo se
+ * a execução parar no meio por algum erro. Preventivas, monitoramento
+ * e falhas são sempre inseridos como novos registros — se rodar esta
+ * função uma segunda vez DEPOIS que ela já tiver migrado esses três
+ * com sucesso, eles ficariam duplicados.
  */
 
 const VERSAO_CODIGO = 'v3-supabase-2026-10-03';
@@ -81,6 +85,20 @@ function supabaseUpdate_(tabela, query, patch) {
 
 function supabaseDelete_(tabela, query) {
   return supabaseRequest_('DELETE', tabela + '?' + query, { headers: { Prefer: 'return=representation' } });
+}
+
+/**
+ * Insere, mas se já existir uma linha com o mesmo valor na coluna de
+ * conflito (ex: um ID ou e-mail repetido), substitui silenciosamente em
+ * vez de dar erro. Usado na migração para tolerar linhas duplicadas na
+ * planilha antiga e permitir rodar de novo sem travar.
+ */
+function supabaseUpsert_(tabela, objeto, colunaConflito) {
+  const linhas = supabaseRequest_('POST', tabela + '?on_conflict=' + colunaConflito, {
+    body: objeto,
+    headers: { Prefer: 'resolution=merge-duplicates,return=representation' }
+  });
+  return linhas && linhas[0];
 }
 
 // ---------------------------------------------------------------------
@@ -427,23 +445,18 @@ function toIso_(v) {
  * duplicar dados em uma segunda execução acidental.
  */
 function migrarPlanilhaParaSupabase() {
-  const jaTemDados = supabaseSelect_('flaviense_equipamentos', 'select=id&limit=1');
-  if (jaTemDados.length) {
-    throw new Error('O Supabase já tem equipamentos cadastrados — migração abortada para não duplicar.');
-  }
-
   const usuarios = sheetToObjectsLegado_(SHEETS_LEGADO.USUARIOS);
   usuarios.forEach(function (u) {
-    supabaseInsert_('flaviense_usuarios', { nome: u.Nome, usuario: u.Usuario, senha_hash: u.SenhaHash, ativo: u.Ativo === true });
+    supabaseUpsert_('flaviense_usuarios', { nome: u.Nome, usuario: u.Usuario, senha_hash: u.SenhaHash, ativo: u.Ativo === true }, 'usuario');
   });
 
   const equipamentos = sheetToObjectsLegado_(SHEETS_LEGADO.EQUIPAMENTOS);
   equipamentos.forEach(function (eq) {
-    supabaseInsert_('flaviense_equipamentos', {
+    supabaseUpsert_('flaviense_equipamentos', {
       id: eq.ID, nome: eq.Nome, descricao: eq.Descricao || null, local: eq.Local || null,
       data_proxima_intervencao: formatarDataSql_(eq.DataProximaIntervencao),
       criado_em: toIso_(eq.CriadoEm), atualizado_em: toIso_(eq.AtualizadoEm)
-    });
+    }, 'id');
   });
 
   const preventivas = sheetToObjectsLegado_(SHEETS_LEGADO.PREVENTIVAS);
@@ -472,7 +485,7 @@ function migrarPlanilhaParaSupabase() {
   const emails = sheetToObjectsLegado_(SHEETS_LEGADO.ALERTAS);
   emails.forEach(function (e) {
     if (!e.Email) return;
-    supabaseInsert_('flaviense_emails_alerta', { email: e.Email });
+    supabaseUpsert_('flaviense_emails_alerta', { email: e.Email }, 'email');
   });
 
   Logger.log(
